@@ -192,6 +192,7 @@ mod tests {
         std::fs::write(&ack, sniper_core::config::OPERATOR_ACK_MAGIC).unwrap();
         let text = format!(
             "[runtime]\nmode = \"live\"\nlive_trading_enabled = true\noperator_ack_path = \"{}\"\n\
+             [ingest]\nproviders = [\"geyser\"]\ngeyser_endpoint = \"https://geyser.example\"\n\
              [trade]\nbuy_amount_lamports = 1000000\nbuy_slippage_bps = 1000\nsell_slippage_bps = 1000\nexit_strategy = \"manual\"\n\
              [risk]\nmax_open_positions = 1\nmax_position_lamports = 2000000\nmax_aggregate_lamports = 2000000\n\
              max_daily_loss_lamports = 1000000\nmax_priority_fee_microlamports = 1000000\nmax_tip_lamports = 0\nmax_pending_orders = 1\nmax_staleness_slots = 5\n",

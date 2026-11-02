@@ -8,7 +8,14 @@ description = "Safe runtimes (observe/replay/paper), priority bus, transaction j
 
 [dependencies]
 sniper-core.workspace = true
+sniper-protocols.workspace = true
+solana-client.workspace = true
+solana-pubsub-client.workspace = true
+solana-rpc-client-types.workspace = true
 solana-sdk.workspace = true
+yellowstone-grpc-client.workspace = true
+yellowstone-grpc-proto.workspace = true
+futures.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
@@ -24,3 +31,5 @@ live = []
 [dev-dependencies]
 tempfile.workspace = true
 toml.workspace = true
+yellowstone-grpc-client = { workspace = true, features = ["test-tools"] }
+tokio = { workspace = true, features = ["test-util"] }

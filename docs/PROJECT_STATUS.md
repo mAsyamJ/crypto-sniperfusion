@@ -8,7 +8,7 @@ Living document; update at every milestone close. Format: state, evidence pointe
 |---|---|---|
 | M0 — Audit, baseline, dependency selection, protocol verification | **COMPLETE** (2026-11-02) | `docs/evidence/M0.md` |
 | M1 — Functional Rust core, config, risk authz, safe replay runtime | **COMPLETE** (2026-11-02) | `docs/evidence/M1.md` |
-| M2 — Pump.fun event decoding, streaming interfaces, fixture parity | **M2a COMPLETE** (decode differential 320/320); M2b (live adapters) NOT STARTED | `docs/evidence/M2.md` |
+| M2 — Pump.fun event decoding, streaming interfaces, fixture parity | **COMPLETE** (M2a differential 320/320; M2b providers+supervision+cache) | `docs/evidence/M2.md` |
 | M3 — V2/V3 + PumpSwap lifecycle on local SVM | PLANNED | — |
 | M4 — Chainstack parity scope closure | PLANNED | — |
 | M5 — Token intelligence + DevFlowMonitor | PLANNED | — |
@@ -44,8 +44,9 @@ Event decoding + log attribution + differential harness complete: 320 synthetic 
 - PostCompleteBuyEvent layout (synthetic migration pool leg) — pending M3 with SYNTHETIC_MIGRATION.md quoting work.
 - Host RAM watch item unchanged (jobs=2 held).
 
-## Next actions (M2b then M3)
+## Next actions (M3)
 
-1. M2b: provider adapter traits + WSS logs/blockSubscribe implementations (opt-in network tests skip cleanly offline); Yellowstone gRPC client wiring (16.0.1/proto 14.0.1 already pinned); SubscribeDeshred capability detection; reconnect/gap/reorder property tests on the live bus; blockhash cache with staleness bound.
-2. M3: instruction builders (v2 primary + v3 primary, legacy fallback) validated on LiteSVM against the account tables; tx lifecycle INTENT→…→UNKNOWN with journal-backed crash recovery; simulated fills for paper mode.
-3. Carry: `pump-rust-client` 0.5.0 evaluation at M3 entry.
+1. M3: PDAs module + exact integer quote math (curve constant-product; PumpSwap effective reserves with i128 signed virtual reserves) with property tests.
+2. M3: instruction builders (curve v2+v3 primary, legacy fallback; PumpSwap v1+v2) validated structurally against PROTOCOL_COMPATIBILITY tables; LiteSVM execution harness (program-binary fixture opt-in).
+3. M3: transaction lifecycle INTENT→…→UNKNOWN + journal-backed crash recovery at every stage; paper fill engine.
+4. Carry: `pump-rust-client` 0.5.0 evaluation at M3 entry; blocks/shreds adapters scoped to M6 with the provider trait now in place.

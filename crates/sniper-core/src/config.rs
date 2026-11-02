@@ -143,11 +143,81 @@ pub struct RiskLimitsConfig {
     pub max_staleness_slots: u32,
 }
 
+/// Ingestion provider wiring. Secrets (API tokens) come from the
+/// environment at runtime, never from this file.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct IngestConfig {
+    /// Preference order for provider selection with fallback.
+    #[serde(default)]
+    pub providers: Vec<IngestProviderKind>,
+    /// WebSocket endpoint for the logs listener (wss://…).
+    #[serde(default)]
+    pub wss_endpoint: Option<String>,
+    /// Yellowstone gRPC endpoint (https://…).
+    #[serde(default)]
+    pub geyser_endpoint: Option<String>,
+    /// Auth style for the gRPC endpoint.
+    #[serde(default)]
+    pub geyser_auth: GeyserAuth,
+    /// Reconnect backoff: initial delay, milliseconds.
+    #[serde(default = "default_backoff_initial_ms")]
+    pub backoff_initial_ms: u64,
+    #[serde(default = "default_backoff_max_ms")]
+    pub backoff_max_ms: u64,
+    /// Consecutive connect failures before a provider is declared dead.
+    #[serde(default = "default_max_connect_failures")]
+    pub max_connect_failures: u32,
+}
+
+fn default_backoff_initial_ms() -> u64 {
+    500
+}
+fn default_backoff_max_ms() -> u64 {
+    30_000
+}
+fn default_max_connect_failures() -> u32 {
+    10
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum IngestProviderKind {
+    Logs,
+    Blocks,
+    Geyser,
+    Shreds,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GeyserAuth {
+    #[default]
+    XToken,
+    Basic,
+}
+
+impl Default for IngestConfig {
+    fn default() -> Self {
+        Self {
+            providers: Vec::new(),
+            wss_endpoint: None,
+            geyser_endpoint: None,
+            geyser_auth: GeyserAuth::default(),
+            backoff_initial_ms: default_backoff_initial_ms(),
+            backoff_max_ms: default_backoff_max_ms(),
+            max_connect_failures: default_max_connect_failures(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AppConfig {
     #[serde(default)]
     pub runtime: RuntimeConfig,
+    #[serde(default)]
+    pub ingest: IngestConfig,
     #[serde(default)]
     pub trade: TradeConfig,
     #[serde(default)]
@@ -235,6 +305,27 @@ impl AppConfig {
                 "runtime.mode = live requires live_trading_enabled = true".into(),
             ));
         }
+        // Live mode without any ingestion provider can never observe a
+        // market: refuse at load instead of at first silence.
+        if self.runtime.mode == RunMode::Live && self.ingest.providers.is_empty() {
+            return Err(ConfigError::Validation(
+                "live mode requires at least one ingest provider".into(),
+            ));
+        }
+        if self.ingest.providers.contains(&IngestProviderKind::Logs)
+            && self.ingest.wss_endpoint.is_none()
+        {
+            return Err(ConfigError::Validation(
+                "logs provider requires ingest.wss_endpoint".into(),
+            ));
+        }
+        if self.ingest.providers.contains(&IngestProviderKind::Geyser)
+            && self.ingest.geyser_endpoint.is_none()
+        {
+            return Err(ConfigError::Validation(
+                "geyser provider requires ingest.geyser_endpoint".into(),
+            ));
+        }
         Ok(())
     }
 }
@@ -276,6 +367,7 @@ mod tests {
         std::fs::write(&ack, OPERATOR_ACK_MAGIC).unwrap();
         let text = format!(
             "[runtime]\nmode = \"live\"\nlive_trading_enabled = true\noperator_ack_path = \"{}\"\n\
+             [ingest]\nproviders = [\"geyser\"]\ngeyser_endpoint = \"https://geyser.example\"\n\
              [trade]\nbuy_amount_lamports = 1000000\nbuy_slippage_bps = 1000\nsell_slippage_bps = 1000\nexit_strategy = \"manual\"\n\
              [risk]\nmax_open_positions = 1\nmax_position_lamports = 2000000\nmax_aggregate_lamports = 2000000\n\
              max_daily_loss_lamports = 1000000\nmax_priority_fee_microlamports = 1000000\nmax_tip_lamports = 0\nmax_pending_orders = 1\nmax_staleness_slots = 5\n",
@@ -292,6 +384,17 @@ mod tests {
         )
         .unwrap();
         assert!(matches!(cfg.validate(), Err(ConfigError::Validation(_))));
+    }
+
+    #[test]
+    fn ingest_provider_requires_its_endpoint() {
+        let cfg = toml::from_str::<AppConfig>("[ingest]\nproviders = [\"logs\"]\n").unwrap();
+        assert!(matches!(cfg.validate(), Err(ConfigError::Validation(_))));
+        let cfg = toml::from_str::<AppConfig>(
+            "[ingest]\nproviders = [\"geyser\"]\ngeyser_endpoint = \"https://x\"\n",
+        )
+        .unwrap();
+        cfg.validate().expect("geyser with endpoint validates");
     }
 
     #[test]

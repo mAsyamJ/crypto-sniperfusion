@@ -18,7 +18,9 @@ pub mod time;
 pub mod venue;
 
 pub use authz::{AuthzError, AuthzRequest, OrderFacts, RiskAuthorization, RiskEngine, StrategyId};
-pub use config::{AppConfig, ConfigError, ExitStrategy, RunMode};
+pub use config::{
+    AppConfig, ConfigError, ExitStrategy, GeyserAuth, IngestConfig, IngestProviderKind, RunMode,
+};
 pub use error::SniperError;
 pub use event::{
     ChainEvent, ChainEventId, Commitment, DedupOutcome, DedupRegistry, EventPayload, ProviderKind,

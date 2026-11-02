@@ -20,6 +20,11 @@ sniper-protocols = { path = "crates/sniper-protocols" }
 sniper-runtime = { path = "crates/sniper-runtime" }
 # Solana generation pinned by ADR-0003 (M0 spike evidence: docs/SOLANA_COMPATIBILITY.md)
 solana-sdk = "=2.3.1"
+solana-client = "=2.3.1"
+solana-pubsub-client = "=2.3.1"
+solana-rpc-client-types = "=2.3.1"
+yellowstone-grpc-client = "=16.0.1"
+yellowstone-grpc-proto = "=14.0.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
@@ -30,6 +35,7 @@ clap = { version = "4", features = ["derive"] }
 toml = "0.8"
 sha2 = "0.10"
 tempfile = "3"
+futures = "0.3"
 
 # RAM-constrained host (7.6 GiB total): cap parallel codegen (AGENTS.md).
 [profile.dev]

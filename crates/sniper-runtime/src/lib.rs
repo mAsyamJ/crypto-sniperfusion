@@ -7,11 +7,16 @@
 
 pub mod bus;
 pub mod capability;
+pub mod ingest;
 pub mod journal;
 pub mod runner;
 
 pub use bus::{Priority, PriorityBus, PublishOutcome};
 pub use capability::{acquire_live, LiveCapability, LiveGateError, LiveGateInputs};
+pub use ingest::{
+    BlockhashCache, EntryGate, EventProvider, GapTracker, ProviderError, RawObservation,
+    ReconnectPolicy, StreamEvent, StreamSupervisor,
+};
 pub use journal::{FileJournal, JournalRecord, LifecycleStage, TxJournal};
 pub use runner::{Decision, DecisionHook, ReplayRunner, RunSummary};
 
