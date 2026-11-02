@@ -1,0 +1,23 @@
+name: harness-validation
+
+on:
+  push:
+    paths:
+      - "harness/**"
+      - ".github/workflows/harness-validation.yml"
+  pull_request:
+    paths:
+      - "harness/**"
+      - ".github/workflows/harness-validation.yml"
+
+jobs:
+  standalone-harness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell syntax
+        run: bash -n harness/scripts/*.sh
+      - name: Evaluator unit tests
+        run: python3 -m unittest discover -s harness/tests -v
+      - name: Synthetic evaluation smoke
+        run: python3 harness/scripts/evaluate_paper.py harness/fixtures/example_paper_trades.jsonl
