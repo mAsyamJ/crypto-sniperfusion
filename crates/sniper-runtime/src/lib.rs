@@ -5,6 +5,7 @@
 //! funded `Signer`. Live capability exists only behind the non-default `live`
 //! feature AND passes four independent runtime gates.
 
+pub mod broker;
 pub mod bus;
 pub mod capability;
 pub mod ingest;
