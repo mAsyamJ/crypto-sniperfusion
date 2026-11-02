@@ -9,7 +9,7 @@ Living document; update at every milestone close. Format: state, evidence pointe
 | M0 — Audit, baseline, dependency selection, protocol verification | **COMPLETE** (2026-11-02) | `docs/evidence/M0.md` |
 | M1 — Functional Rust core, config, risk authz, safe replay runtime | **COMPLETE** (2026-11-02) | `docs/evidence/M1.md` |
 | M2 — Pump.fun event decoding, streaming interfaces, fixture parity | **COMPLETE** (M2a differential 320/320; M2b providers+supervision+cache) | `docs/evidence/M2.md` |
-| M3 — V2/V3 + PumpSwap lifecycle on local SVM | PLANNED | — |
+| M3 — V2/V3 + PumpSwap lifecycle | **OFFLINE CORE COMPLETE** (math/builders/lifecycle/paper); SVM-execution fixtures (M3c) OPEN | `docs/evidence/M3.md` |
 | M4 — Chainstack parity scope closure | PLANNED | — |
 | M5 — Token intelligence + DevFlowMonitor | PLANNED | — |
 | M6 — Multi-DEX + copy trading | PLANNED | — |
@@ -44,9 +44,17 @@ Event decoding + log attribution + differential harness complete: 320 synthetic 
 - PostCompleteBuyEvent layout (synthetic migration pool leg) — pending M3 with SYNTHETIC_MIGRATION.md quoting work.
 - Host RAM watch item unchanged (jobs=2 held).
 
-## Next actions (M3)
+## M3 results (summary — verbatim detail in evidence file)
 
-1. M3: PDAs module + exact integer quote math (curve constant-product; PumpSwap effective reserves with i128 signed virtual reserves) with property tests.
-2. M3: instruction builders (curve v2+v3 primary, legacy fallback; PumpSwap v1+v2) validated structurally against PROTOCOL_COMPATIBILITY tables; LiteSVM execution harness (program-binary fixture opt-in).
-3. M3: transaction lifecycle INTENT→…→UNKNOWN + journal-backed crash recovery at every stage; paper fill engine.
-4. Carry: `pump-rust-client` 0.5.0 evaluation at M3 entry; blocks/shreds adapters scoped to M6 with the provider trait now in place.
+PDA module (doc-constants verified), exact integer math (curve constant-product, i128 signed effective reserves, bounded-output invariant), six instruction builders (curve v3×3 @17 accounts, v2 buy 27 / sell 26, PumpSwap sell_v2 @17) with doc-table structural tests, order lifecycle machine with journal write-ahead + full crash-recovery test matrix (UNKNOWN mapping, duplicate-submission rejection, entry gating), paper fill engine with fee-in/out round-trip economics. Gates all green (fmt, clippy×2, tests×2: 89 tests across workspace).
+
+## Open items / blockers
+
+- **M3c (next session, first task)**: LiteSVM execution vs real pump.fun/PumpSwap program binaries — needs opt-in program-ELF fetch or committed fixture; PostCompleteBuyEvent layout from synthetic-migration fixtures.
+- M4 then proceeds: LetsBonk/LaunchLab parity scope, exit-strategy parity, CONFIG_MIGRATION.md, runtime-Python-independence proof.
+
+## Next actions (M3c → M4)
+
+1. M3c: opt-in program-ELF fixture fetch script (read-only RPC), LiteSVM harness executing builders end-to-end, PostCompleteBuyEvent decode.
+2. M4: Chainstack parity closure per CAPABILITY_MATRIX rows C2–C24; `docs/CONFIG_MIGRATION.md`;LetsBonk/StonkFun adapter scope decision.
+3. Carry: `pump-rust-client` 0.5.0 build-helper evaluation.
