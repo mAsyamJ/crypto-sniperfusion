@@ -1,5 +1,7 @@
 # Project Status
 
+**Repository: `mAsyamJ/crypto-sniperfusion` (private)** — renamed 2026-11-02 by owner decision. Project name: **SniperFusion**. Chain-agnostic naming on purpose: Solana is the only implemented chain today; every doc claim about capabilities remains Solana-scoped until multi-chain code lands behind its own milestone gates.
+
 Living document; update at every milestone close. Format: state, evidence pointer, next.
 
 ## Milestones
