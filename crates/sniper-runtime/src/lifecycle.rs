@@ -94,6 +94,7 @@ pub struct OrderRecord {
 pub struct LifecycleMachine {
     journal: FileJournal,
     orders: HashMap<String, OrderRecord>,
+    tail_repaired: bool,
 }
 
 impl LifecycleMachine {
@@ -103,19 +104,38 @@ impl LifecycleMachine {
         let mut machine = Self {
             journal,
             orders: HashMap::new(),
+            tail_repaired: false,
         };
         machine.recover()?;
         Ok(machine)
     }
 
+    /// True when the underlying journal repaired an unterminated crash tail
+    /// at open — journal bytes were lost; recovery is conservative.
+    pub fn tail_was_repaired(&self) -> bool {
+        self.tail_repaired
+    }
+
     /// Rebuild state from the journal after a crash/restart. Terminal states
-    /// restore as-is; anything in-flight (SIGNED/SUBMITTED/OBSERVED) restores
-    /// as UNKNOWN — the crash destroyed knowledge of the outcome.
+    /// restore as-is EXCEPT Failed-after-Observed (a contradiction that
+    /// requires reconciliation); anything in-flight (SIGNED/SUBMITTED/
+    /// OBSERVED) restores as UNKNOWN — the crash destroyed knowledge of the
+    /// outcome. A repaired crash tail additionally maps every non-terminal
+    /// order to UNKNOWN even if its last record looked settled.
     fn recover(&mut self) -> Result<(), LifecycleError> {
+        self.tail_repaired = self.journal.tail_was_repaired();
         let contents = self
             .journal
             .load()
             .map_err(|e| LifecycleError::Journal(e.to_string()))?;
+        // Track per order whether OBSERVED was ever journaled: a later
+        // Failed contradicts it and must reconcile, not restore terminal.
+        let mut saw_observed: std::collections::HashSet<String> = std::collections::HashSet::new();
+        for rec in &contents.records {
+            if rec.stage == LifecycleStage::Observed {
+                saw_observed.insert(rec.intent_id.clone());
+            }
+        }
         for rec in contents.records {
             let entry = self
                 .orders
@@ -140,6 +160,32 @@ impl LifecycleMachine {
                 OrderState::Signed | OrderState::Submitted | OrderState::Observed
             ) {
                 entry.state = OrderState::Unknown;
+            }
+        }
+        // Contradiction rule: Failed recorded AFTER an Observed for the same
+        // order restores as Reconciling — only reconciliation resolves an
+        // observed-then-failed outcome.
+        for entry in self.orders.values_mut() {
+            if entry.state == OrderState::Failed && saw_observed.contains(&entry.intent_id) {
+                entry.state = OrderState::Reconciling;
+            }
+        }
+        // Lost-bytes rule: a repaired crash tail means unknown damage; any
+        // order that is not cleanly terminal (Intent/Authorized) escalates
+        // to Unknown for reconciliation. Terminal-without-contradiction
+        // (Finalized, reconciled Failed) stays.
+        if self.tail_repaired {
+            for entry in self.orders.values_mut() {
+                if matches!(
+                    entry.state,
+                    OrderState::Signed
+                        | OrderState::Submitted
+                        | OrderState::Observed
+                        | OrderState::Unknown
+                        | OrderState::Reconciling
+                ) {
+                    entry.state = OrderState::Unknown;
+                }
             }
         }
         Ok(())
@@ -443,19 +489,98 @@ mod tests {
     #[test]
     fn recovery_sequence_continues_in_reopened_machine() {
         let dir = tempfile::tempdir().unwrap();
-        let mut m = machine(&dir);
-        m.create_intent("o1").unwrap();
-        m.authorize("o1").unwrap();
-        m.signed("o1", "sigGGG").unwrap();
-        let seq_before = m.journal.load().unwrap().records.len();
+        {
+            let mut m = machine(&dir);
+            m.create_intent("o1").unwrap();
+            m.authorize("o1").unwrap();
+            m.signed("o1", "sigGGG").unwrap();
+        } // single-writer: drop the first machine before reopening
         let mut m2 = machine(&dir); // reopen continues the file
         let seq_after = m2.journal.load().unwrap().records.len();
-        assert_eq!(seq_before, seq_after);
+        assert_eq!(seq_after, 3);
         // The recovered machine can take a NEW intent and reach signed state.
         m2.create_intent("o2").unwrap();
         m2.authorize("o2").unwrap();
         m2.signed("o2", "sigHHH").unwrap();
         assert_eq!(m2.state_of("o2"), Some(OrderState::Signed));
+    }
+
+    #[test]
+    fn truncated_tail_on_recovery_maps_inflight_to_unknown_and_surfaces() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("orders.jsonl");
+        {
+            let mut m = LifecycleMachine::open(&path).unwrap();
+            m.create_intent("o1").unwrap();
+            m.authorize("o1").unwrap();
+            m.signed("o1", "sigTTT").unwrap();
+        }
+        // Crash mid-append of the next record.
+        use std::io::Write as _;
+        let mut f = std::fs::OpenOptions::new()
+            .append(true)
+            .open(&path)
+            .unwrap();
+        write!(f, r#"{{"seq":4,"stage":"submi"#).unwrap();
+        drop(f);
+
+        let m2 = LifecycleMachine::open(&path).unwrap();
+        assert!(
+            m2.tail_was_repaired(),
+            "recovery must surface the crash-tail repair"
+        );
+        // SIGNED at crash already maps to Unknown; the repair flag is the
+        // additional signal that journal bytes were lost.
+        assert_eq!(m2.state_of("o1"), Some(OrderState::Unknown));
+        assert!(!m2.new_entries_allowed());
+    }
+
+    #[test]
+    fn failed_after_observed_requires_reconciliation_not_silent_final() {
+        // The audit hole: a journaled Failed AFTER an Observed record could
+        // restore as silently terminal. It must restore to Reconciling so a
+        // human/reconciler decides — an observed tx that "failed" later is
+        // a contradiction only reconciliation can resolve.
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("orders.jsonl");
+        {
+            let mut m = LifecycleMachine::open(&path).unwrap();
+            m.create_intent("o1").unwrap();
+            m.authorize("o1").unwrap();
+            m.signed("o1", "sigUUU").unwrap();
+            m.submitted("o1").unwrap();
+            m.observed("o1").unwrap();
+            // Live machine marks Failed after Observed (legal transition).
+            m.failed("o1").unwrap();
+        }
+        let m2 = LifecycleMachine::open(&path).unwrap();
+        assert_eq!(
+            m2.state_of("o1"),
+            Some(OrderState::Reconciling),
+            "Failed-after-Observed must reconcile, not restore terminal"
+        );
+        assert!(!m2.new_entries_allowed());
+        // Resolution is still possible.
+        let mut m2 = m2;
+        m2.finalized("o1").unwrap();
+        assert!(m2.new_entries_allowed());
+    }
+
+    #[test]
+    fn plain_failed_without_observation_stays_terminal() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("orders.jsonl");
+        {
+            let mut m = LifecycleMachine::open(&path).unwrap();
+            m.create_intent("o1").unwrap();
+            m.authorize("o1").unwrap();
+            m.mark_unknown("o1").unwrap();
+            m.reconcile("o1").unwrap();
+            m.failed("o1").unwrap(); // reconciled failure is final
+        }
+        let m2 = LifecycleMachine::open(&path).unwrap();
+        assert_eq!(m2.state_of("o1"), Some(OrderState::Failed));
+        assert!(m2.new_entries_allowed());
     }
 
     #[test]

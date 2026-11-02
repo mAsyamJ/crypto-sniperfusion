@@ -1,0 +1,5 @@
+error[E0451]: field `inner` of struct `AuthorizedOrder` is private
+  --> tests/ui/construct_authorized_order.rs:28:36
+   |
+28 |     let _order = AuthorizedOrder { inner: dto };
+   |                                    ^^^^^ private field

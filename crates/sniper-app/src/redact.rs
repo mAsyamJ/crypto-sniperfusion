@@ -164,7 +164,7 @@ mod tests {
 
     #[test]
     fn idempotent() {
-        let s = "private_key=abcdefghijklmnopqrstuvwxyz12 more";
+        let s = "private_key=abcdefghijklmnopqrstuvwxyz12 more"; // safe-secret-scan: fixture
         assert_eq!(redact(&redact(s)), redact(s));
     }
 }

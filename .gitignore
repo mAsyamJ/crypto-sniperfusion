@@ -17,3 +17,7 @@ __pycache__/
 
 # agent session artifacts
 /.zcode/
+
+# pinned local tool binaries (Surfpool etc.) — never commit executables
+/harness/bin/
+harness/runs/

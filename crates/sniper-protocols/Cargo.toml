@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+publish = false
 description = "Venue registry, instruction-version tables, and discriminators (Pump.fun / PumpSwap)"
 
 [dependencies]
@@ -15,3 +16,5 @@ serde.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true
+# fork_execution.rs talks to a loopback Surfpool fork (opt-in tests only)
+solana-client.workspace = true

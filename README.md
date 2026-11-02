@@ -1,6 +1,6 @@
 # SniperFusion
 
-**Repo: `crypto-sniperfusion` — chain-agnostic by design; Solana is the first chain.**
+**Repo: `crypto-sniperfusion` — PUBLIC; chain-agnostic by design; Solana is the first chain.**
 
 Rust-native crypto sniper engine under milestone-gated engineering. The current implementation targets Solana (pump.fun / PumpSwap, with LaunchLab/LetsBonk in the parity scope); extending to other popular chains is on the roadmap *after* the Solana parity and safety gates pass — the engine's contracts (canonical event identity, risk authorization, order lifecycle, provider abstraction) were deliberately written chain-neutral so new venues and, later, new chains slot in without redesign. Baseline behavior: [chainstacklabs/pumpfun-bonkfun-bot](https://github.com/chainstacklabs/pumpfun-bonkfun-bot) (Apache-2.0, pinned at `upstream/chainstack`), used strictly as an offline differential-test oracle. Protocol truth: official pump.fun docs/IDLs (`upstream/pump-docs`) + on-chain fixtures. Selected designs from three additional reference repos under clean-room rules (see `docs/ADRS/0002-clean-room-licensing.md`).
 

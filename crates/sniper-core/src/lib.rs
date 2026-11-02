@@ -17,7 +17,10 @@ pub mod serde_keys;
 pub mod time;
 pub mod venue;
 
-pub use authz::{AuthzError, AuthzRequest, OrderFacts, RiskAuthorization, RiskEngine, StrategyId};
+pub use authz::{
+    AuthorizedOrder, AuthzError, AuthzRequest, Chain, OrderFacts, RiskAuthorization, RiskEngine,
+    StrategyId,
+};
 pub use config::{
     AppConfig, ConfigError, ExitStrategy, GeyserAuth, IngestConfig, IngestProviderKind, RunMode,
 };

@@ -19,12 +19,16 @@ fn bin() -> PathBuf {
 }
 
 fn write_config(dir: &std::path::Path, mode: &str) -> PathBuf {
-    let path = dir.join(format!("{mode}.toml"));
+    write_config_with_buy(dir, mode, 0)
+}
+
+fn write_config_with_buy(dir: &std::path::Path, mode: &str, buy: u64) -> PathBuf {
+    let path = dir.join(format!("{mode}-{buy}.toml"));
     std::fs::write(
         &path,
         format!(
             "[runtime]\nmode = \"{mode}\"\n\
-             [trade]\nbuy_amount_lamports = 0\nbuy_slippage_bps = 0\nsell_slippage_bps = 0\nexit_strategy = \"manual\"\n"
+             [trade]\nbuy_amount_lamports = {buy}\nbuy_slippage_bps = 0\nsell_slippage_bps = 0\nexit_strategy = \"manual\"\n"
         ),
     )
     .unwrap();
@@ -99,7 +103,7 @@ fn replay_mode_end_to_end_offline() {
 }
 
 #[test]
-fn paper_mode_runs_and_reports_planned_only() {
+fn paper_mode_zero_spend_never_buys() {
     let dir = tempfile::tempdir().unwrap();
     let cfg = write_config(dir.path(), "paper");
     let fixtures = write_fixtures(dir.path(), 3);
@@ -112,7 +116,31 @@ fn paper_mode_runs_and_reports_planned_only() {
     ]);
     assert!(ok, "stderr: {stderr}");
     let report: serde_json::Value = serde_json::from_str(&stdout).unwrap();
-    assert_eq!(report["decisions"], 3);
+    assert_eq!(report["fills"], 0, "zero spend must never fill");
+    assert_eq!(report["open_positions"], 0);
+    assert_eq!(report["cash_lamports"], 1_000_000_000u64);
+}
+
+#[test]
+fn paper_mode_funded_buys_open_nonzero_positions() {
+    let dir = tempfile::tempdir().unwrap();
+    let cfg = write_config_with_buy(dir.path(), "paper", 50_000_000);
+    let fixtures = write_fixtures(dir.path(), 3);
+    let (ok, stdout, stderr) = run(&[
+        "paper",
+        "--config",
+        cfg.to_str().unwrap(),
+        "--fixtures",
+        fixtures.to_str().unwrap(),
+    ]);
+    assert!(ok, "stderr: {stderr}");
+    let report: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    // H2 contract: a reported buy MUST have a non-zero position when fill
+    // criteria pass — no more intents-only paper mode.
+    assert_eq!(report["fills"], 3, "one fill per created token");
+    assert_eq!(report["open_positions"], 3);
+    assert!(report["cash_lamports"].as_u64().unwrap() < 1_000_000_000);
+    assert_eq!(report["run"]["decisions"], 3);
 }
 
 #[test]

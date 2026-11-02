@@ -1,6 +1,7 @@
 # Project Status
 
-**Repository: `mAsyamJ/crypto-sniperfusion` (private)** — renamed 2026-11-02 by owner decision. Project name: **SniperFusion**. Chain-agnostic naming on purpose: Solana is the only implemented chain today; every doc claim about capabilities remains Solana-scoped until multi-chain code lands behind its own milestone gates.
+**Repository: `mAsyamJ/crypto-sniperfusion` (PUBLIC — verified 2026-11-03, owner decision: keep public).** Project name: **SniperFusion**. Chain-agnostic naming on purpose: Solana is the only implemented chain today; every doc claim about capabilities remains Solana-scoped until multi-chain code lands behind its own milestone gates.
+**Operational consequence of PUBLIC:** strategy logic, risk thresholds, and evaluation results are world-readable. Enforced invariants that make this acceptable: no keys/secrets/`.env` in history (H0.4 scans enforce), no funded credentials, no infrastructure endpoints in docs. Revisit visibility before any live-trading authorization — see ADR-0002.
 
 Living document; update at every milestone close. Format: state, evidence pointer, next.
 
@@ -11,7 +12,9 @@ Living document; update at every milestone close. Format: state, evidence pointe
 | M0 — Audit, baseline, dependency selection, protocol verification | **COMPLETE** (2026-11-02) | `docs/evidence/M0.md` |
 | M1 — Functional Rust core, config, risk authz, safe replay runtime | **COMPLETE** (2026-11-02) | `docs/evidence/M1.md` |
 | M2 — Pump.fun event decoding, streaming interfaces, fixture parity | **COMPLETE** (M2a differential 320/320; M2b providers+supervision+cache) | `docs/evidence/M2.md` |
-| M3 — V2/V3 + PumpSwap lifecycle | **OFFLINE CORE COMPLETE** (math/builders/lifecycle/paper); SVM-execution fixtures (M3c) OPEN | `docs/evidence/M3.md` |
+| M3 — V2/V3 + PumpSwap lifecycle | **COMPLETE incl. M3c** (real local execution on Surfpool fork, 2026-11-02) | `docs/evidence/M3.md`, `docs/evidence/M3c.md` |
+| H2 — Real paper broker (event-sourced) | **COMPLETE** (2026-11-02) | `docs/evidence/H2.md` |
+| H4 — Improvement harness CLI skeleton | **COMPLETE** (2026-11-02; H3 shadow window intentionally not started) | `docs/evidence/H4.md` |
 | M4 — Chainstack parity scope closure | PLANNED | — |
 | M5 — Token intelligence + DevFlowMonitor | PLANNED | — |
 | M6 — Multi-DEX + copy trading | PLANNED | — |
@@ -60,3 +63,26 @@ PDA module (doc-constants verified), exact integer math (curve constant-product,
 1. M3c: opt-in program-ELF fixture fetch script (read-only RPC), LiteSVM harness executing builders end-to-end, PostCompleteBuyEvent decode.
 2. M4: Chainstack parity closure per CAPABILITY_MATRIX rows C2–C24; `docs/CONFIG_MIGRATION.md`;LetsBonk/StonkFun adapter scope decision.
 3. Carry: `pump-rust-client` 0.5.0 build-helper evaluation.
+
+## H-mission results (2026-11-02, branch codex/harness-m3c-security)
+
+- **H0** (`bd5c3b0`): sealed `AuthorizedOrder` trust boundary, durable
+  checksummed single-writer journal with crash-tail repair, backfill-proof
+  EntryGate, history-aware secret scan + cargo-deny CI, docs visibility fix.
+- **H1/M3c** (`b305106`): Surfpool v1.7.0 pinned (sha256 recorded); real
+  local `buy_v3`/`sell_v3` + negative control against the deployed pump.fun
+  ELF on a loopback mainnet fork; official-IDL conformance fixes
+  (`partial_fill` arg, account mutability, ATA prerequisite); live-PDA
+  ground-truth tests; deployed-program economics documented (volume
+  accumulator SOL routing, quote-era event semantics open).
+- **H2** (`f38f1cc`): event-sourced PaperBroker (fills/fees/rent/slippage,
+  no-lookahead, migration, ledger crash-recovery, deterministic export);
+  CLI paper mode rewired with reconciled P&L receipt accepted by the
+  independent evaluator (broker realized 2,080,057 vs evaluator net
+  2,068,057 = exactly the separately-booked 12,000 network+tip).
+- **H4** (harness skeleton): `harness/snf-harness` — doctor/verify/replay/
+  fork/shadow/evaluate/compare/promote with write-once run manifests;
+  promotion requires the full gate chain INCLUDING the ≥7-day shadow window
+  and never enables live trading. Tests: 167/167 both feature sets.
+- **H3**: NOT STARTED (needs ≥7 days read-only observation; the harness
+  `shadow` command refuses to fabricate it).

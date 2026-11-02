@@ -9,6 +9,7 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 use sniper_core::config::{AppConfig, RunMode};
+use sniper_runtime::broker::{PaperBrokerConfig, PaperBrokerHook};
 use sniper_runtime::runner::{CountingHook, ReplayRunner};
 use sniper_runtime::{acquire_live, LiveGateInputs};
 
@@ -129,27 +130,91 @@ fn run_replay_mode(
 
     let events = ReplayRunner::load_fixtures(&fixtures).map_err(|e| e.to_string())?;
     let runner = ReplayRunner::default();
-    let mut hook = CountingHook::default();
-    let summary = runner.run(&events, &mut hook).map_err(|e| e.to_string())?;
 
-    tracing::info!(
-        mode = ?mode,
-        events = summary.events_in,
-        duplicates = summary.duplicates,
-        shed = summary.shed_speculative,
-        decisions = summary.decisions,
-        "run complete"
-    );
-    serde_json::to_string_pretty(&RunReport {
-        mode: format!("{mode:?}"),
-        events_in: summary.events_in,
-        duplicates: summary.duplicates,
-        published: summary.published,
-        shed_speculative: summary.shed_speculative,
-        decisions: summary.decisions,
-        buys_proposed: hook.buys_proposed,
-    })
-    .map_err(|e| e.to_string())
+    let report = if mode == RunMode::Paper {
+        // H2: paper mode runs the event-sourced PaperBroker — real virtual
+        // fills, fees, positions and a reconciled net-P&L receipt.
+        let broker_cfg = PaperBrokerConfig {
+            slippage_bps: sniper_core::primitives::BasisPoints(cfg.trade.buy_slippage_bps),
+            ..PaperBrokerConfig::default()
+        };
+        let mut hook = PaperBrokerHook::new(
+            broker_cfg,
+            sniper_core::primitives::Lamports(cfg.trade.buy_amount_lamports),
+            "paper-replay-v1".to_string(),
+        );
+        let summary = runner.run(&events, &mut hook).map_err(|e| e.to_string())?;
+        let broker = hook.broker();
+        let closed: Vec<serde_json::Value> = broker
+            .export_closed_trades_jsonl()
+            .lines()
+            .filter(|l| !l.trim().is_empty())
+            .map(|l| serde_json::from_str(l).expect("closed trade parses"))
+            .collect();
+        tracing::info!(
+            mode = ?mode,
+            events = summary.events_in,
+            fills = hook.fills(),
+            unfilled = hook.unfilled(),
+            realized_pnl_lamports = broker.realized_pnl(),
+            "paper run complete"
+        );
+        serde_json::to_string_pretty(&PaperRunReport {
+            run: RunReport {
+                mode: format!("{mode:?}"),
+                events_in: summary.events_in,
+                duplicates: summary.duplicates,
+                published: summary.published,
+                shed_speculative: summary.shed_speculative,
+                decisions: summary.decisions,
+                buys_proposed: hook.fills(),
+            },
+            fills: hook.fills(),
+            unfilled: hook.unfilled(),
+            cash_lamports: broker.cash().0,
+            realized_pnl_lamports: broker.realized_pnl(),
+            equity_mark_to_exit_lamports: broker.equity_mark_to_exit(),
+            max_drawdown_lamports: broker.max_drawdown(),
+            open_positions: broker.position_count(),
+            closed_trades: closed,
+        })
+        .map_err(|e| e.to_string())?
+    } else {
+        let mut hook = CountingHook::default();
+        let summary = runner.run(&events, &mut hook).map_err(|e| e.to_string())?;
+        tracing::info!(
+            mode = ?mode,
+            events = summary.events_in,
+            duplicates = summary.duplicates,
+            shed = summary.shed_speculative,
+            decisions = summary.decisions,
+            "run complete"
+        );
+        serde_json::to_string_pretty(&RunReport {
+            mode: format!("{mode:?}"),
+            events_in: summary.events_in,
+            duplicates: summary.duplicates,
+            published: summary.published,
+            shed_speculative: summary.shed_speculative,
+            decisions: summary.decisions,
+            buys_proposed: hook.buys_proposed,
+        })
+        .map_err(|e| e.to_string())?
+    };
+    Ok(report)
+}
+
+#[derive(serde::Serialize)]
+struct PaperRunReport {
+    run: RunReport,
+    fills: u64,
+    unfilled: u64,
+    cash_lamports: u64,
+    realized_pnl_lamports: i128,
+    equity_mark_to_exit_lamports: i128,
+    max_drawdown_lamports: i128,
+    open_positions: usize,
+    closed_trades: Vec<serde_json::Value>,
 }
 
 #[derive(serde::Serialize)]
