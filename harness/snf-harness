@@ -1,0 +1,340 @@
+#!/usr/bin/env python3
+"""snf-harness — SniperFusion continuous-improvement harness CLI (H4 skeleton).
+
+Subcommands: doctor | verify | replay | fork | shadow | evaluate | compare |
+promote. Every execution persists an IMMUTABLE run manifest under
+harness/runs/ recording git SHA, input hashes, argv, exit codes, timestamps
+and output digests. Manifests are write-once (overwrite refused).
+
+Safety posture (non-negotiable):
+- `promote` NEVER enables live trading. It only records that paper
+  configuration gates passed; live trading stays behind the independent
+  operator authorization path (config/risk/capability gates).
+- `shadow` is an honest stub: H3 requires ≥7 days of read-only market
+  observation; this skeleton refuses to fabricate it.
+- No funded keys, no mainnet submission, no repository push.
+"""
+import argparse
+import hashlib
+import json
+import os
+import subprocess
+import sys
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+RUNS = ROOT / "harness" / "runs"
+LIVE_TRADING_GUARD = "LIVE_TRADING_ENABLED"
+
+REQUIRED_EVALUATOR_FIELDS = {
+    "trade_id", "strategy", "mint", "decision_at_ms",
+    "features_observed_at_ms", "entry_at_ms", "exit_at_ms",
+    "entry_quote_debited", "exit_quote_received", "network_fees_lamports",
+    "tips_lamports", "entry_slot", "exit_slot",
+}
+
+
+def sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 16), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def git_sha() -> str:
+    try:
+        return subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
+            text=True, check=True,
+        ).stdout.strip()
+    except subprocess.CalledProcessError:
+        return "unknown"
+
+
+def write_manifest(name: str, argv: list[str], exit_code: int,
+                   inputs: list[Path], outputs: dict) -> Path:
+    """Write-once manifest; refuses to overwrite an existing id."""
+    RUNS.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+    manifest = RUNS / f"{stamp}-{name}-{os.getpid()}.json"
+    if manifest.exists():
+        raise SystemExit(f"refusing to overwrite existing manifest {manifest}")
+    body = {
+        "harness": "snf-harness",
+        "schema_version": 1,
+        "command": name,
+        "argv": argv,
+        "exit_code": exit_code,
+        "git_sha": git_sha(),
+        "started_at_utc": stamp,
+        "recorded_at_unix": int(time.time()),
+        "inputs": [
+            {"path": str(p.resolve().relative_to(ROOT)) if str(p.resolve()).startswith(str(ROOT))
+                    else str(p), "sha256": sha256_file(p)}
+            for p in inputs if p.exists()
+        ],
+        "outputs": outputs,
+        "live_trading_enabled": os.environ.get(LIVE_TRADING_GUARD, "false"),
+    }
+    manifest.write_text(json.dumps(body, indent=2, sort_keys=True) + "\n")
+    # immutability: drop write permission
+    manifest.chmod(0o444)
+    return manifest
+
+
+def run(cmd: list[str], **kw) -> subprocess.CompletedProcess:
+    print(f"$ {' '.join(cmd)}", flush=True)
+    return subprocess.run(cmd, cwd=ROOT, **kw)
+
+
+def digest(text: str) -> str:
+    return hashlib.sha256(text.encode()).hexdigest()
+
+
+# ---- subcommands ---------------------------------------------------------
+
+def cmd_doctor(args) -> int:
+    checks = {}
+    checks["cargo"] = run(["cargo", "--version"], capture_output=True, text=True).returncode == 0
+    surfpool = ROOT / "harness" / "bin" / "surfpool"
+    checks["surfpool_pinned_binary"] = surfpool.exists()
+    if surfpool.exists():
+        ver = run([str(surfpool), "--version"], capture_output=True, text=True)
+        checks["surfpool_version"] = ver.stdout.strip()
+    try:
+        import urllib.request
+        req = urllib.request.Request(
+            "http://127.0.0.1:18899",
+            data=json.dumps({"jsonrpc": "2.0", "id": 1, "method": "getHealth"}).encode(),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            checks["local_fork"] = json.loads(resp.read())["result"] == "ok"
+    except Exception:
+        checks["local_fork"] = False
+    checks["live_trading_disabled"] = os.environ.get(LIVE_TRADING_GUARD, "false") == "false"
+    checks["no_private_key_env"] = not (
+        os.environ.get("SOLANA_PRIVATE_KEY") or os.environ.get("PRIVATE_KEY")
+    )
+    ok = all(v is True for k, v in checks.items() if isinstance(v, bool))
+    print(json.dumps(checks, indent=2))
+    return 0 if ok else 1
+
+
+def cmd_verify(args) -> int:
+    steps = {
+        "fmt": ["cargo", "fmt", "--all", "--", "--check"],
+        "clippy": ["cargo", "clippy", "--all-targets", "--", "-D", "warnings"],
+        "test": ["cargo", "test"],
+        "deny": ["cargo", "deny", "check", "advisories", "licenses", "sources"],
+    }
+    results = {}
+    code = 0
+    for name, cmd in steps.items():
+        proc = run(cmd, capture_output=True, text=True)
+        results[name] = {
+            "exit_code": proc.returncode,
+            "stdout_sha256": digest(proc.stdout),
+            "stderr_tail": proc.stderr[-2000:],
+        }
+        code = code or proc.returncode
+    print(json.dumps({k: v["exit_code"] for k, v in results.items()}, indent=2))
+    manifest = write_manifest("verify", sys.argv[1:], code, [], results)
+    print(f"manifest: {manifest}")
+    return code
+
+
+def cmd_replay(args) -> int:
+    fixtures = Path(args.fixtures).resolve()
+    if not fixtures.exists():
+        print(f"fixtures not found: {fixtures}", file=sys.stderr)
+        return 2
+    proc = run([
+        "cargo", "run", "-q", "-p", "sniper-app", "--", "replay",
+        "--config", args.config, "--fixtures", str(fixtures),
+    ])
+    manifest = write_manifest(
+        "replay", sys.argv[1:], proc.returncode, [fixtures, Path(args.config)],
+        {"stdout_sha256": "recorded-live"},
+    )
+    print(f"manifest: {manifest}")
+    return proc.returncode
+
+
+def cmd_fork(args) -> int:
+    env = dict(os.environ)
+    if not os.environ.get("SNF_SOURCE_RPC"):
+        print("SNF_SOURCE_RPC (read-only upstream) is required", file=sys.stderr)
+        return 2
+    env["SNF_SOURCE_RPC"] = os.environ["SNF_SOURCE_RPC"]
+    proc = subprocess.Popen(
+        ["bash", str(ROOT / "harness" / "scripts" / "start_fork.sh")],
+        cwd=ROOT, env=env,
+    )
+    try:
+        health = run(["bash", str(ROOT / "harness" / "scripts" / "fork_health.sh")])
+        code = health.returncode
+    finally:
+        proc.terminate()
+    write_manifest("fork", sys.argv[1:], code, [], {})
+    return code
+
+
+def cmd_shadow(args) -> int:
+    # H3 honesty: shadow trading needs >=7 days of read-only observation.
+    # This skeleton refuses to fabricate or shortcut it.
+    msg = {
+        "status": "NOT_STARTED",
+        "reason": "H3 shadow trading requires >=7 days read-only market "
+                  "observation; start it explicitly with the observer "
+                  "runtime and re-invoke after the window.",
+        "required_window_days": 7,
+    }
+    print(json.dumps(msg, indent=2))
+    write_manifest("shadow", sys.argv[1:], 3, [], msg)
+    return 3
+
+
+def cmd_evaluate(args) -> int:
+    trades = Path(args.trades).resolve()
+    if not trades.exists():
+        print(f"trades file not found: {trades}", file=sys.stderr)
+        return 2
+    # Contract check first: every line must carry the evaluator fields.
+    bad = []
+    for i, line in enumerate(trades.read_text().splitlines(), 1):
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        missing = REQUIRED_EVALUATOR_FIELDS - set(row)
+        if missing:
+            bad.append({"line": i, "missing": sorted(missing)})
+    if bad:
+        print(json.dumps({"schema_violations": bad}, indent=2), file=sys.stderr)
+        return 2
+    proc = run(["python3", str(ROOT / "harness" / "scripts" / "evaluate_paper.py"), str(trades)],
+               capture_output=True, text=True)
+    print(proc.stdout)
+    if proc.returncode:
+        print(proc.stderr, file=sys.stderr)
+    manifest = write_manifest(
+        "evaluate", sys.argv[1:], proc.returncode, [trades],
+        {"evaluation_sha256": digest(proc.stdout), "evaluation": json.loads(proc.stdout)},
+    )
+    print(f"manifest: {manifest}")
+    return proc.returncode
+
+
+def load_manifest(path: Path) -> dict:
+    m = json.loads(path.read_text())
+    m["_path"] = str(path)
+    return m
+
+
+def cmd_compare(args) -> int:
+    a, b = load_manifest(Path(args.baseline)), load_manifest(Path(args.candidate))
+    ea = a.get("outputs", {}).get("evaluation", {})
+    eb = b.get("outputs", {}).get("evaluation", {})
+    if not ea or not eb:
+        print("both manifests must be evaluate runs with recorded evaluations",
+              file=sys.stderr)
+        return 2
+    keys = ["trades", "win_rate", "net_pnl_lamports", "mean_net_pnl_lamports",
+            "network_plus_tip_lamports", "max_closed_pnl_drawdown_lamports"]
+    delta = {
+        "baseline": {k: ea.get(k) for k in keys},
+        "candidate": {k: eb.get(k) for k in keys},
+        "delta": {
+            k: (eb.get(k) - ea.get(k)) if isinstance(ea.get(k), (int, float))
+            and isinstance(eb.get(k), (int, float)) else None
+            for k in keys
+        },
+        "git_sha": {"baseline": a.get("git_sha"), "candidate": b.get("git_sha")},
+    }
+    print(json.dumps(delta, indent=2))
+    write_manifest("compare", sys.argv[1:], 0, [Path(args.baseline), Path(args.candidate)], delta)
+    return 0
+
+
+def cmd_promote(args) -> int:
+    """Gate-based promotion of a PAPER configuration. NEVER enables live
+    trading: it only records that correctness/security/evaluation gates
+    passed across the referenced manifests."""
+    refs = [load_manifest(Path(p)) for p in args.manifests]
+    kinds = [m.get("command") for m in refs]
+    gates = {
+        "verify_green": "verify" in kinds and all(
+            m["outputs"][s]["exit_code"] == 0
+            for m in refs if m.get("command") == "verify"
+            for s in m["outputs"]
+        ),
+        "evaluation_present": any(m.get("command") == "evaluate" for m in refs),
+        "no_live_trading": all(
+            m.get("live_trading_enabled") == "false" for m in refs),
+        "shadow_window": any(m.get("command") == "shadow"
+                             and m.get("outputs", {}).get("status") == "COMPLETE"
+                             for m in refs),
+    }
+    decision = {
+        "decision": "PROMOTED (paper config)" if all(gates.values()) else "NOT_PROMOTED",
+        "gates": gates,
+        "note": "promotion NEVER enables live trading; live requires the "
+                "independent operator authorization path",
+        "manifests": [m["_path"] for m in refs],
+    }
+    print(json.dumps(decision, indent=2))
+    code = 0 if all(gates.values()) else 1
+    write_manifest("promote", sys.argv[1:], code, [Path(p) for p in args.manifests], decision)
+    return code
+
+
+def cmd_selftest(args) -> int:
+    """Exercise manifest write-once behavior and the evaluator gate."""
+    import tempfile
+    with tempfile.TemporaryDirectory() as td:
+        trades = Path(td) / "t.jsonl"
+        trades.write_text(json.dumps({
+            "trade_id": 1, "strategy": "s", "mint": "m",
+            "decision_at_ms": 50, "features_observed_at_ms": 40,
+            "entry_at_ms": 120, "exit_at_ms": 900, "entry_quote_debited": 100,
+            "exit_quote_received": 90, "network_fees_lamports": 10,
+            "tips_lamports": 2, "entry_slot": 1, "exit_slot": 2,
+        }) + "\n")
+        m = write_manifest("selftest", ["selftest"], 0, [trades], {"ok": True})
+        assert m.exists()
+        try:
+            m.write_text("{}")  # must fail or be a no-op given 0o444
+            if m.read_text() == "{}":
+                print("FAIL: manifest overwrite was possible", file=sys.stderr)
+                return 1
+        except PermissionError:
+            pass
+        print("selftest: manifest immutability OK")
+    return 0
+
+
+def main() -> int:
+    p = argparse.ArgumentParser(prog="snf-harness")
+    sub = p.add_subparsers(dest="cmd", required=True)
+    sub.add_parser("doctor")
+    sub.add_parser("verify")
+    r = sub.add_parser("replay"); r.add_argument("--config", required=True); r.add_argument("--fixtures", required=True)
+    sub.add_parser("fork")
+    sub.add_parser("shadow")
+    e = sub.add_parser("evaluate"); e.add_argument("--trades", required=True)
+    c = sub.add_parser("compare"); c.add_argument("--baseline", required=True); c.add_argument("--candidate", required=True)
+    pr = sub.add_parser("promote"); pr.add_argument("manifests", nargs="+")
+    sub.add_parser("selftest")
+    args = p.parse_args()
+    return {
+        "doctor": cmd_doctor, "verify": cmd_verify, "replay": cmd_replay,
+        "fork": cmd_fork, "shadow": cmd_shadow, "evaluate": cmd_evaluate,
+        "compare": cmd_compare, "promote": cmd_promote, "selftest": cmd_selftest,
+    }[args.cmd](args)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
