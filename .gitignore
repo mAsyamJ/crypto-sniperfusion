@@ -1,0 +1,16 @@
+/upstream/
+/target/
+/.venv/
+/.env
+/.env.*
+!/.env.example
+/.secrets/
+*.key
+*.pem
+*.log
+
+# local agent/tool artifacts
+/.v2c/
+/.video_agent/
+# python oracle artifacts
+__pycache__/

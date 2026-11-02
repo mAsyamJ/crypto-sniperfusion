@@ -1,0 +1,37 @@
+# AGENTS.md — engineering rules for this repository
+
+Read `AGENT_MASTER_PROMPT.md` (authoritative spec) and the approved amendments. This file binds every agent/session working here.
+
+## Non-negotiable safety
+
+1. `LIVE_TRADING_ENABLED=false` default; live mode needs 4 independent gates (feature + operator token + validated budget + kill switch). Never weaken.
+2. No funded keys, no mainnet broadcast, no paid infra, no push, no force-anything, without explicit owner authorization recorded in the task.
+3. Tests use ephemeral/fixture keys only. Secrets never enter logs, errors, commits, or fixtures.
+4. Observer/replay/paper runtimes must remain structurally incapable of broadcasting (capability types, compile-time).
+
+## Licensing (ADR-0002)
+
+- chainstack (Apache-2.0): read for behavior, reimplement originally; keep attribution in `docs/UPSTREAM_MANIFEST.md`.
+- yuto / m8s / mev-bot: **clean-room only** — facts (IDs, endpoints, thresholds) may inform; code/structures/flow may not be copied or transliterated. Never build or run them.
+- Protocol behavior comes from `upstream/pump-docs` + on-chain fixtures, not from any sniper repo.
+
+## Engineering loop (every milestone, in order)
+
+DISCOVER → SPECIFY ACCEPTANCE → WRITE FAILING TEST → IMPLEMENT → `cargo fmt` → `cargo clippy --all-targets --all-features -- -D warnings` → unit/integration tests → SVM/replay tests where applicable → fault-injection where applicable → benchmark where applicable → REVIEW (diff, secrets, licenses) → EVIDENCE (`docs/evidence/M{n}.md`: files, tests, commands, exit codes, measurements, open defects) → UPDATE `docs/PROJECT_STATUS.md` + capability matrix → **local commit** (conventional message, never push).
+
+Failure discipline: a failing gate blocks the milestone; root-cause, fix, re-run. Never mark unexecuted tests passed; never edit expected fixtures to go green without documented protocol-source justification.
+
+## Environment
+
+- Rust toolchain rustc 1.99.1 (rustup); workspace pins in `Cargo.toml` + lockfile; solana family = Generation 2 (ADR-0003). Any version bump = regression event.
+- RAM-constrained host: `CARGO_BUILD_JOBS=2` (drop to 1 on swap pressure); watch `free -h` during builds.
+- Prefix shell commands with `rtk` (operator proxy) where available.
+- Upstream repos under `upstream/` are read-only and gitignored; the chainstack oracle venv lives inside that checkout.
+
+## Where things are
+
+`docs/` (all engineering docs + `evidence/`), `crates/` (workspace from M1), `fixtures/`, `config/`, `.github/workflows/` (CI from M1). Status of everything: `docs/PROJECT_STATUS.md`.
+
+## Current milestone protocol
+
+M0 → M9 per amended sequence (`AGENT_MASTER_PROMPT.md` §8 as amended). A milestone advances only when its gate in `docs/TEST_PLAN.md` passes for real. First vertical slice: complete Pump.fun/PumpSwap event → screening → simulated entry → position → simulated exit lifecycle, offline, fixture-reproducible.
