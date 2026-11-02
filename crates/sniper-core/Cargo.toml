@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+publish = false
 description = "Canonical domain types: dual event identity, integer primitives, typed config, risk authorization"
 
 [dependencies]
@@ -17,3 +18,4 @@ bs58 = "0.5"
 
 [dev-dependencies]
 tempfile.workspace = true
+trybuild = "1"

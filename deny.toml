@@ -1,0 +1,68 @@
+# cargo-deny configuration — H0.4.
+# Advisories: known-vulnerability crates are denied.
+# Licenses: dependency license allowlist. The workspace itself is UNLICENSED
+# (proprietary); only what we LINK against is constrained here.
+
+[advisories]
+version = 2
+yanked = "deny"
+unmaintained = "workspace" # fail only if a workspace dep is unmaintained
+# Known-and-accepted advisories, each with a reason. Audited at every bump.
+# Every ignore below is a TRANSITIVE of the pinned solana-sdk 2.3.1 line
+# (ADR-0003; the SDK cannot bump until the litesvm/agave issue resolves).
+# None is fixable by us without that migration; all are revisited at bump.
+ignore = [
+  "RUSTSEC-2024-0375", # atty unmaintained (transitive)
+  "RUSTSEC-2025-0141", # bincode 1.x unmaintained (transitive via solana-sdk)
+  "RUSTSEC-2024-0344", # curve25519-dalek timing variability (transitive)
+  "RUSTSEC-2022-0093", # ed25519-dalek 1.0.1 oracle attack (via solana-keypair)
+  "RUSTSEC-2024-0388", # derivative unmaintained (transitive)
+  "RUSTSEC-2024-0436", # paste unmaintained (transitive)
+  "RUSTSEC-2025-0119", # number_prefix unmaintained (transitive)
+  # rustls 0.21 family — via tokio-tungstenite 0.20 -> solana-pubsub-client:
+  "RUSTSEC-2026-0098", # webpki URI name constraints
+  "RUSTSEC-2026-0099", # webpki name constraints (IP)
+  "RUSTSEC-2026-0104", # webpki CRL parsing panic
+  "RUSTSEC-2026-0346", # rustls Debug impls expose TLS secrets
+  "RUSTSEC-2026-0349", # rustls downgrade via unauthenticated ServerHello
+  "RUSTSEC-2026-0381", # webpki bundled distrusted emSign roots
+  "RUSTSEC-2026-0382", # webpki accepts distrusted intermediates
+]
+
+[licenses]
+version = 2
+# Our own crates are UNLICENSED (proprietary); private-workspace crates are
+# exempt from the dependency license check.
+private = { ignore = true }
+allow = [
+  "MIT",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Unicode-3.0",
+  "Unicode-DFS-2016",
+  "Zlib",
+  "CC0-1.0",
+  "0BSD",
+  "BlueOak-1.0.0",
+  # MPL-2.0 (file-level copyleft, OSI approved): webpki-roots — bundled CA
+  # roots data consumed unmodified at runtime; we do not modify/redistribute
+  # its source. Accepted for the pinned SDK's TLS transitives.
+  "MPL-2.0",
+  # CDLA-Permissive-2.0: webpki-root-certs — permissive data license for CA
+  # certificate data; not code. Accepted as data-only dependency.
+  "CDLA-Permissive-2.0",
+]
+# Small odds-and-ends common in the Solana/Rust tree; anything outside this
+# list fails the check and must be reviewed before adding.
+confidence-threshold = 0.93
+
+[bans]
+multiple-versions = "warn"
+highlight = "all"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

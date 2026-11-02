@@ -14,11 +14,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history for the history-aware secret scan
 
       - name: Install Rust toolchain (pinned)
         run: |
           rustup toolchain install 1.99.1 --profile minimal --component rustfmt,clippy
           rustup default 1.99.1
+
+      - name: Install cargo-deny (pinned)
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny@0.20.2
 
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -48,22 +55,41 @@ jobs:
       - name: Tests (all features)
         run: cargo test --workspace --all-features
 
-      - name: Secret scan (tracked files)
-        run: |
-          # High-signal patterns only; base58 87/88-char runs and classic
-          # key/value secret shapes. Signature-shaped strings are acceptable
-          # collateral in tests, so exclude the fixtures/tests dirs here and
-          # rely on entropy review for those.
-          ! grep -rnE "(PRIVATE_KEY|SECRET|API_KEY|PASSWORD)[[:space:]]*[=:][[:space:]]*[A-Za-z0-9+/_-]{16,}" \
-              --include="*.rs" --include="*.toml" --include="*.yml" --include="*.md" \
-              crates config docs .github README.md AGENTS.md 2>/dev/null \
-              | grep -viE "YOUR_|placeholder|example|\.\.\.|REDACTED|magic"
-          echo "secret scan: clean"
+      # H0.4: dependency vulnerabilities + licenses via cargo-deny
+      # (policy: deny.toml — advisories denied, yanked denied, license
+      # allowlist, unknown registries/git sources denied).
+      - name: cargo-deny (advisories + licenses + sources)
+        run: cargo deny check advisories licenses sources
 
-      - name: License check (no new copyleft deps into the build)
+      # H0.4: history-aware secret scan — every line ever ADDED on any
+      # branch reachable from refs/remotes/origin and HEAD. The allowlist
+      # markers mirror the working-tree scan (tests use `safe-secret-scan`).
+      - name: Secret scan (full history, all added lines)
         run: |
-          # cargo-deny would be authoritative; keep the guard explicit until
-          # it is vendored: MS-PL/GPL/MIT-text-missing upstream code must
-          # never appear in crates/.
+          set -o pipefail
+          if git log --all --diff-filter=A --format=%H -1 > /dev/null 2>&1; then
+            git log -p --all --format=commit-%H \
+              | grep -E "^[+]" \
+              | grep -inE "(PRIVATE_KEY|SECRET|API_KEY|PASSWORD|PASSPHRASE|MNEMONIC|SEED_PHRASE)[[:space:]]*[=:][[:space:]]*[A-Za-z0-9+/_-]{16,}" \
+              | grep -viE "YOUR_|placeholder|example|\.\.\.|REDACTED|safe-secret-scan|magic|\[SKIP\]" \
+              | tee /tmp/secret_hits.txt \
+              && { echo "::error::secrets found in history"; cat /tmp/secret_hits.txt; exit 1; } \
+              || { HITS=$(wc -l < /tmp/secret_hits.txt 2>/dev/null || echo 0); echo "history secret scan: clean"; }
+          fi
+
+      # H0.4: no funded key material in ANY commit, ever (file-path audit).
+      - name: Key-file scan (full history, added paths)
+        run: |
+          if git log --all --diff-filter=A --name-only --format= \
+              | grep -E "(^|/)(\.env($|\.)|.*\.key$|.*\.pem$|id\.json$|.*wallet.*\.json$|\.secrets/)" \
+              | grep -v ".env.example"; then
+            echo "::error::key material found in history"; exit 1
+          fi
+          echo "key-file scan: clean"
+
+      # H0.4: upstream-source license guard (our own crates must not embed
+      # incompatible-license upstream text; cargo-deny covers dependencies).
+      - name: Upstream license text guard (crates/)
+        run: |
           ! grep -rn "Microsoft Public License\|Ms-PL\|GNU GENERAL PUBLIC" crates/ 2>/dev/null
           echo "license scan: clean"

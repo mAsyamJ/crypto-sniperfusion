@@ -16,4 +16,6 @@ pub mod wss;
 pub use blockhash::BlockhashCache;
 pub use frame::{RawObservation, RawPayload};
 pub use provider::{EventProvider, ProviderError, ReconnectPolicy};
-pub use supervisor::{EntryGate, GapTracker, StreamEvent, StreamSupervisor};
+pub use supervisor::{
+    BackfillReceipt, EntryGate, GapTracker, SlotCursor, StreamEvent, StreamSupervisor,
+};
