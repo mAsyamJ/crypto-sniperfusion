@@ -1,6 +1,7 @@
 //! sniper-app: CLI entry point. Safe modes by default; `live` refuses to run
 //! unless compiled with the `live` feature AND all four runtime gates pass.
 
+mod decode_events;
 mod redact;
 
 use std::path::PathBuf;
@@ -47,6 +48,11 @@ enum Command {
         #[arg(long)]
         fixtures: PathBuf,
     },
+    /// Decode fixture payloads (differential harness; prints oracle-shaped JSON).
+    DecodeEvents {
+        #[arg(long)]
+        fixtures: PathBuf,
+    },
     /// Live trading. Requires a `live`-feature build plus four runtime gates.
     Live {
         #[arg(long)]
@@ -80,6 +86,7 @@ fn main() -> ExitCode {
         Command::Paper { config, fixtures } => {
             run_replay_mode(config, Some(fixtures), RunMode::Paper)
         }
+        Command::DecodeEvents { fixtures } => decode_events::run(fixtures),
         Command::Live {
             config,
             kill_switch_path,

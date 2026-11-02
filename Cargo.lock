@@ -1780,6 +1780,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sniper-core",
+ "sniper-protocols",
  "sniper-runtime",
  "solana-sdk",
  "tempfile",

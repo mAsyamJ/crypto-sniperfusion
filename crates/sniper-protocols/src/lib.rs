@@ -7,10 +7,16 @@
 
 pub mod amm;
 pub mod curve;
+pub mod events;
+pub mod logs;
 pub mod registry;
 
 pub use amm::PumpSwapIx;
 pub use curve::CurveTradeIx;
+pub use events::{BorshReader, CreateEvent, PumpEvent, TradeEvent};
+pub use logs::{
+    decode_first_event, decode_token_creation_from_logs, extract_program_data, LogAttribution,
+};
 pub use registry::{
     program_id, program_id_for, PROGRAM_LETS_BONK, PROGRAM_PUMP_FUN, PROGRAM_PUMP_SWAP,
 };

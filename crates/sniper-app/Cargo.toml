@@ -12,6 +12,7 @@ path = "src/main.rs"
 
 [dependencies]
 sniper-core.workspace = true
+sniper-protocols.workspace = true
 sniper-runtime.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -20,10 +21,10 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 clap.workspace = true
 thiserror.workspace = true
+solana-sdk.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
-solana-sdk.workspace = true
 
 [features]
 default = []

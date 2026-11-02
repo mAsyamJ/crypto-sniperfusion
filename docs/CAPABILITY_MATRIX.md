@@ -6,7 +6,7 @@ Legend — per upstream: `VERIFIED` (source-verified working), `STUB` (present b
 
 | # | Capability | Upstream evidence | Rust parity status |
 |---|---|---|---|
-| C1 | pump.fun create-event parsing + instruction fallback | `event_parser.py` (988 L); logs+ix decode | PLANNED(M2) — discriminators/account tables landed in `sniper-protocols` (M1) |
+| C1 | pump.fun create-event parsing + instruction fallback | `event_parser.py` (988 L); logs+ix decode | **DECODER PARITY PASS (M2a)** — event decode + log attribution differential 320/320; instruction-data decode lands M3 |
 | C2 | Logs listener (WSS logsSubscribe, processed, err-gate) | `universal_logs_listener.py` | PLANNED(M2) |
 | C3 | Blocks listener (blockSubscribe, confirmed, v1 envelope, null-guard) | `universal_block_listener.py` | PLANNED(M2) |
 | C4 | Geyser listener (Yellowstone Subscribe, PROCESSED, failed=False) | `universal_geyser_listener.py` | PLANNED(M2) |

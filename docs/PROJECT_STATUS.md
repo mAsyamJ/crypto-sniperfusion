@@ -8,7 +8,7 @@ Living document; update at every milestone close. Format: state, evidence pointe
 |---|---|---|
 | M0 — Audit, baseline, dependency selection, protocol verification | **COMPLETE** (2026-11-02) | `docs/evidence/M0.md` |
 | M1 — Functional Rust core, config, risk authz, safe replay runtime | **COMPLETE** (2026-11-02) | `docs/evidence/M1.md` |
-| M2 — Pump.fun event decoding, streaming interfaces, fixture parity | PLANNED | — |
+| M2 — Pump.fun event decoding, streaming interfaces, fixture parity | **M2a COMPLETE** (decode differential 320/320); M2b (live adapters) NOT STARTED | `docs/evidence/M2.md` |
 | M3 — V2/V3 + PumpSwap lifecycle on local SVM | PLANNED | — |
 | M4 — Chainstack parity scope closure | PLANNED | — |
 | M5 — Token intelligence + DevFlowMonitor | PLANNED | — |
@@ -34,11 +34,18 @@ Workspace: 4 crates (core/protocols/runtime/app), solana-sdk =2.3.1 per ADR-0003
 - Deferred: `pump-rust-client` 0.5.0 evaluation (M3); Yellowstone bump headroom (16→17) harmless.
 - Gen-4 revisit trigger documented in ADR-0003 (litesvm ≥0.19 or mollusk maturity).
 
-## Next actions (M2 — Pump.fun event decoding + streaming parity)
+## M2a results (summary — verbatim detail in evidence file)
 
-1. Fixture corpus: convert chainstack committed fixtures + new sanitized captures into `fixtures/` JSONL (base58 serde landed in M1).
-2. Rust decoders: pump.fun create/trade/migrate log-event parsing (TradeEvent/CompleteEvent + PostCompleteBuyEvent) and ix-data decoding (v2+v3 discriminators already tabled in sniper-protocols).
-3. Provider adapters: logs (WSS logsSubscribe), blocks, Yellowstone gRPC (client 16.0.1/proto 14.0.1), SubscribeDeshred capability detection; reconnect/gap/reorder handling on the bus.
-4. Differential harness: Rust decoder output vs chainstack oracle on shared fixtures (decoder-level parity report).
-5. Blockhash cache + commitment upgrade wiring.
-6. Gates: existing M1 gates + decoder parity table; evidence M2.md; commit.
+Event decoding + log attribution + differential harness complete: 320 synthetic fixtures (8 kinds incl. old-format truncated), oracle = chainstack IDLParser; comparator result ALL MATCH (4792/4792 comparable fields, exit 0). Two oracle limitations discovered, documented, and excluded with rationale: D-1 vec<defined> unsupported with silent offset misalignment (oracle post-shareholders fields are garbage), D-2 EOF artifact synthesis. Rust decoders are prefix-tolerant per-field (decoded_fields counts), garbage-proof (property test), and sha256-verified against both IDLs. All gates green (fmt, clippy ×2, tests ×2).
+
+## Open items / blockers
+
+- M2b (live provider adapters: WSS logs/blocks, Yellowstone gRPC, SubscribeDeshred detection, reconnect/gap/reorder against real streams, blockhash cache) — NOT STARTED; requires opt-in read-only provider credentials. First task next session.
+- PostCompleteBuyEvent layout (synthetic migration pool leg) — pending M3 with SYNTHETIC_MIGRATION.md quoting work.
+- Host RAM watch item unchanged (jobs=2 held).
+
+## Next actions (M2b then M3)
+
+1. M2b: provider adapter traits + WSS logs/blockSubscribe implementations (opt-in network tests skip cleanly offline); Yellowstone gRPC client wiring (16.0.1/proto 14.0.1 already pinned); SubscribeDeshred capability detection; reconnect/gap/reorder property tests on the live bus; blockhash cache with staleness bound.
+2. M3: instruction builders (v2 primary + v3 primary, legacy fallback) validated on LiteSVM against the account tables; tx lifecycle INTENT→…→UNKNOWN with journal-backed crash recovery; simulated fills for paper mode.
+3. Carry: `pump-rust-client` 0.5.0 evaluation at M3 entry.
