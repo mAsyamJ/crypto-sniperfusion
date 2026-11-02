@@ -1,0 +1,45 @@
+# Solana Sniper Fusion — safe observe-mode example configuration.
+#
+# Every money field is zero and live trading is disabled. Copy to your own
+# config and adjust; the loader rejects unknown keys and unsafe combinations.
+#
+# Units are explicit in field names: *_lamports (1 SOL = 1_000_000_000),
+# *_bps (hundredths of a percent, max 10_000), *_secs, *_ms.
+
+[runtime]
+mode = "observe"
+live_trading_enabled = false
+# operator_ack_path is required (pointing at a file containing the exact
+# authorization statement) only when live_trading_enabled = true.
+
+[trade]
+buy_amount_lamports = 0
+buy_slippage_bps = 0
+sell_slippage_bps = 0
+# exit_strategy:
+#   "manual" | { time_based = { wait_after_buy_secs = 5 } } |
+#   { take_profit_stop_loss = { take_profit_bps = 1000, stop_loss_bps = 1000,
+#       max_hold_secs = 300, price_check_interval_secs = 2,
+#       max_exit_sell_attempts = 3 } }
+exit_strategy = "manual"
+
+[filters]
+allowed_venues = []   # empty = no venue passes screening (fail closed)
+max_token_age_ms = 0
+marry_mode = false
+yolo_mode = false
+
+[retries]
+max_attempts = 1
+wait_after_buy_secs = 0
+wait_before_new_token_secs = 0
+
+[risk]
+max_open_positions = 0
+max_position_lamports = 0
+max_aggregate_lamports = 0
+max_daily_loss_lamports = 0
+max_priority_fee_microlamports = 0
+max_tip_lamports = 0
+max_pending_orders = 0
+max_staleness_slots = 0

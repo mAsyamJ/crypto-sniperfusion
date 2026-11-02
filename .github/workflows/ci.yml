@@ -1,0 +1,69 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_BUILD_JOBS: "2" # CI runners are RAM-constrained too
+
+jobs:
+  check-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain (pinned)
+        run: |
+          rustup toolchain install 1.99.1 --profile minimal --component rustfmt,clippy
+          rustup default 1.99.1
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Generate lockfile if absent
+        run: test -f Cargo.lock || cargo generate-lockfile
+
+      - name: Format check
+        run: cargo fmt --all -- --check
+
+      - name: Clippy (default features, deny warnings)
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Clippy (all features incl. live gates, deny warnings)
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Tests (default features)
+        run: cargo test --workspace
+
+      - name: Tests (all features)
+        run: cargo test --workspace --all-features
+
+      - name: Secret scan (tracked files)
+        run: |
+          # High-signal patterns only; base58 87/88-char runs and classic
+          # key/value secret shapes. Signature-shaped strings are acceptable
+          # collateral in tests, so exclude the fixtures/tests dirs here and
+          # rely on entropy review for those.
+          ! grep -rnE "(PRIVATE_KEY|SECRET|API_KEY|PASSWORD)[[:space:]]*[=:][[:space:]]*[A-Za-z0-9+/_-]{16,}" \
+              --include="*.rs" --include="*.toml" --include="*.yml" --include="*.md" \
+              crates config docs .github README.md AGENTS.md 2>/dev/null \
+              | grep -viE "YOUR_|placeholder|example|\.\.\.|REDACTED|magic"
+          echo "secret scan: clean"
+
+      - name: License check (no new copyleft deps into the build)
+        run: |
+          # cargo-deny would be authoritative; keep the guard explicit until
+          # it is vendored: MS-PL/GPL/MIT-text-missing upstream code must
+          # never appear in crates/.
+          ! grep -rn "Microsoft Public License\|Ms-PL\|GNU GENERAL PUBLIC" crates/ 2>/dev/null
+          echo "license scan: clean"

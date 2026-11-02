@@ -1,0 +1,4 @@
+# Host is RAM-constrained (~2-3.5 Gi free of 7.6 Gi): cap parallel rustc jobs.
+# Drop to 1 if builds start swapping (see AGENTS.md resource controls).
+[build]
+jobs = 2

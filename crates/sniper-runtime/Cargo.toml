@@ -1,0 +1,26 @@
+[package]
+name = "sniper-runtime"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Safe runtimes (observe/replay/paper), priority bus, transaction journal, live capability gates"
+
+[dependencies]
+sniper-core.workspace = true
+solana-sdk.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[features]
+default = []
+# The ONLY feature that compiles live-capability acquisition code. Even with
+# it, four independent runtime gates must pass (see capability.rs).
+live = []
+
+[dev-dependencies]
+tempfile.workspace = true
+toml.workspace = true

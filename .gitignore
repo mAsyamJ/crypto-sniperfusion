@@ -14,3 +14,6 @@
 /.video_agent/
 # python oracle artifacts
 __pycache__/
+
+# agent session artifacts
+/.zcode/

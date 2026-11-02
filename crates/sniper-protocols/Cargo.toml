@@ -1,0 +1,17 @@
+[package]
+name = "sniper-protocols"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Venue registry, instruction-version tables, and discriminators (Pump.fun / PumpSwap)"
+
+[dependencies]
+sniper-core.workspace = true
+solana-sdk.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
