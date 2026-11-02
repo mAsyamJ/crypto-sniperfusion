@@ -63,7 +63,9 @@ jobs:
 
       # H0.4: history-aware secret scan — every line ever ADDED on any
       # branch reachable from refs/remotes/origin and HEAD. The allowlist
-      # markers mirror the working-tree scan (tests use `safe-secret-scan`).
+      # markers mirror the working-tree scan (tests use `safe-secret-scan`);
+      # audited exact-substring exemptions live in .github/secret-allowlist.txt
+      # (each entry must reference a benign fixture and is itself reviewable).
       - name: Secret scan (full history, all added lines)
         run: |
           set -o pipefail
@@ -72,6 +74,7 @@ jobs:
               | grep -E "^[+]" \
               | grep -inE "(PRIVATE_KEY|SECRET|API_KEY|PASSWORD|PASSPHRASE|MNEMONIC|SEED_PHRASE)[[:space:]]*[=:][[:space:]]*[A-Za-z0-9+/_-]{16,}" \
               | grep -viE "YOUR_|placeholder|example|\.\.\.|REDACTED|safe-secret-scan|magic|\[SKIP\]" \
+              | grep -viFf .github/secret-allowlist.txt \
               | tee /tmp/secret_hits.txt \
               && { echo "::error::secrets found in history"; cat /tmp/secret_hits.txt; exit 1; } \
               || { HITS=$(wc -l < /tmp/secret_hits.txt 2>/dev/null || echo 0); echo "history secret scan: clean"; }
