@@ -1,0 +1,15 @@
+{
+  "trades": 3,
+  "win_rate": 0.666667,
+  "net_pnl_lamports": -1800000,
+  "mean_net_pnl_lamports": -600000.0,
+  "network_plus_tip_lamports": 800000,
+  "max_closed_pnl_drawdown_lamports": 24450000,
+  "decision_to_entry_latency_ms": {
+    "p50": 150.0,
+    "p95": 186.0,
+    "p99": 189.2
+  },
+  "scope": "closed-roundtrips-only; NOT portfolio mark-to-market",
+  "validation": "accounting-schema-only; NO blockchain execution proof"
+}
