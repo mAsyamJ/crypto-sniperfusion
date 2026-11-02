@@ -40,12 +40,17 @@ fn ix(
     program: &Pubkey,
     discriminator: [u8; 8],
     args: &[u64],
+    trailing_bool: Option<bool>,
     accounts: Vec<AccountMeta>,
 ) -> Instruction {
-    let mut data = Vec::with_capacity(8 + 8 * args.len());
+    let mut data = Vec::with_capacity(8 + 8 * args.len() + usize::from(trailing_bool.is_some()));
     data.extend_from_slice(&discriminator);
     for a in args {
         data.extend_from_slice(&u64_le(*a));
+    }
+    // IDL: the buy family ends with `partial_fill: bool`; sells take none.
+    if let Some(flag) = trailing_bool {
+        data.push(u8::from(flag));
     }
     Instruction {
         program_id: *program,
@@ -79,12 +84,16 @@ impl CurveTradeContext {
     }
 }
 
-/// `buy_v3(amount, max_sol_cost)` — 17 accounts per TRADE_V3.md.
+/// `buy_v3(amount, max_sol_cost, partial_fill)` — 17 accounts per the
+/// official IDL (pump-public-docs @ 639b87f). The trailing `partial_fill:
+/// bool` allows filling fewer tokens than `amount` when the curve cannot
+/// supply the full size.
 pub fn buy_v3(
     ctx: &CurveTradeContext,
     amount: u64,
     max_sol_cost: u64,
     buyback_index: usize,
+    partial_fill: bool,
 ) -> Instruction {
     let pump = pda::pump_program();
     let bonding_curve = pda::bonding_curve(&ctx.base_mint);
@@ -99,22 +108,22 @@ pub fn buy_v3(
             pda::associated_bonding_curve(&ctx.base_mint, &bonding_curve, &ctx.base_token_program),
             false,
         ),
-        AccountMeta::new_readonly(
+        AccountMeta::new(
             pda::spl_associated(&bonding_curve, &ctx.quote_token_program, &ctx.quote_mint),
             false,
         ),
-        AccountMeta::new_readonly(ctx.user, true),
+        AccountMeta::new(ctx.user, true),
         AccountMeta::new(
             pda::spl_associated(&ctx.user, &ctx.base_token_program, &ctx.base_mint),
             false,
         ),
-        AccountMeta::new_readonly(
+        AccountMeta::new(
             pda::spl_associated(&ctx.user, &ctx.quote_token_program, &ctx.quote_mint),
             false,
         ),
         AccountMeta::new(pda::user_volume_accumulator(&ctx.user), false),
         AccountMeta::new_readonly(pda::curve_fee_config(), false),
-        AccountMeta::new_readonly(buyback_fee_recipient(buyback_index), false),
+        AccountMeta::new(buyback_fee_recipient(buyback_index), false),
         AccountMeta::new_readonly(pda::system_program(), false),
         AccountMeta::new_readonly(parse(pda::EVENT_AUTHORITY), false),
         AccountMeta::new_readonly(pump, false),
@@ -123,31 +132,43 @@ pub fn buy_v3(
         &pump,
         CurveTradeIx::BuyV3.discriminator(),
         &[amount, max_sol_cost],
+        Some(partial_fill),
         accounts,
     )
 }
 
-/// `buy_exact_quote_in_v3(spendable_quote_in, min_tokens_out)` — same 17 accounts.
+/// `buy_exact_quote_in_v3(spendable_quote_in, min_tokens_out, partial_fill)`
+/// — same 17 accounts.
 pub fn buy_exact_quote_in_v3(
     ctx: &CurveTradeContext,
     spendable_quote_in: u64,
     min_tokens_out: u64,
     buyback_index: usize,
+    partial_fill: bool,
 ) -> Instruction {
-    let mut i = buy_v3(ctx, spendable_quote_in, min_tokens_out, buyback_index);
+    let mut i = buy_v3(
+        ctx,
+        spendable_quote_in,
+        min_tokens_out,
+        buyback_index,
+        partial_fill,
+    );
     i.data[..8].copy_from_slice(&CurveTradeIx::BuyExactQuoteInV3.discriminator());
     i
 }
 
-/// `sell_v3(amount, min_sol_output)` — same 17 accounts per TRADE_V3.md.
+/// `sell_v3(amount, min_sol_output)` — same 17 accounts; sells have NO
+/// `partial_fill` arg, so the bool byte cloned from the buy layout is
+/// truncated off.
 pub fn sell_v3(
     ctx: &CurveTradeContext,
     amount: u64,
     min_sol_output: u64,
     buyback_index: usize,
 ) -> Instruction {
-    let mut i = buy_v3(ctx, amount, min_sol_output, buyback_index);
+    let mut i = buy_v3(ctx, amount, min_sol_output, buyback_index, false);
     i.data[..8].copy_from_slice(&CurveTradeIx::SellV3.discriminator());
+    i.data.truncate(8 + 16);
     i
 }
 
@@ -165,7 +186,8 @@ pub fn global_volume_accumulator() -> Pubkey {
     Pubkey::find_program_address(&[b"global_volume_accumulator"], &pda::pump_program()).0
 }
 
-/// `buy_v2(amount, max_sol_cost)` — 27 accounts per BUY.md.
+/// `buy_v2(amount, max_sol_cost, partial_fill)` — 27 accounts per the
+/// official IDL.
 #[allow(clippy::too_many_arguments)]
 pub fn buy_v2(
     ctx: &CurveTradeContext,
@@ -173,6 +195,7 @@ pub fn buy_v2(
     amount: u64,
     max_sol_cost: u64,
     buyback_index: usize,
+    partial_fill: bool,
 ) -> Instruction {
     let pump = pda::pump_program();
     let bonding_curve = pda::bonding_curve(&ctx.base_mint);
@@ -187,7 +210,7 @@ pub fn buy_v2(
         AccountMeta::new_readonly(ctx.base_token_program, false),
         AccountMeta::new_readonly(ctx.quote_token_program, false),
         AccountMeta::new_readonly(pda::associated_token_program(), false),
-        AccountMeta::new_readonly(extras.fee_recipient, false),
+        AccountMeta::new(extras.fee_recipient, false),
         AccountMeta::new(
             pda::spl_associated(
                 &extras.fee_recipient,
@@ -196,7 +219,7 @@ pub fn buy_v2(
             ),
             false,
         ),
-        AccountMeta::new_readonly(buyback, false),
+        AccountMeta::new(buyback, false),
         AccountMeta::new(
             pda::spl_associated(&buyback, &ctx.quote_token_program, &ctx.quote_mint),
             false,
@@ -210,7 +233,7 @@ pub fn buy_v2(
             pda::spl_associated(&bonding_curve, &ctx.quote_token_program, &ctx.quote_mint),
             false,
         ),
-        AccountMeta::new_readonly(ctx.user, true),
+        AccountMeta::new(ctx.user, true),
         AccountMeta::new(
             pda::spl_associated(&ctx.user, &ctx.base_token_program, &ctx.base_mint),
             false,
@@ -241,12 +264,13 @@ pub fn buy_v2(
         &pump,
         CurveTradeIx::BuyV2.discriminator(),
         &[amount, max_sol_cost],
+        Some(partial_fill),
         accounts,
     )
 }
 
 /// `sell_v2(amount, min_sol_output)` — 26 accounts per SELL.md (buy list
-/// minus `global_volume_accumulator`).
+/// minus `global_volume_accumulator`); no `partial_fill` arg.
 pub fn sell_v2(
     ctx: &CurveTradeContext,
     extras: &CurveV2Extras,
@@ -254,8 +278,9 @@ pub fn sell_v2(
     min_sol_output: u64,
     buyback_index: usize,
 ) -> Instruction {
-    let mut i = buy_v2(ctx, extras, amount, min_sol_output, buyback_index);
+    let mut i = buy_v2(ctx, extras, amount, min_sol_output, buyback_index, false);
     i.data[..8].copy_from_slice(&CurveTradeIx::SellV2.discriminator());
+    i.data.truncate(8 + 16);
     // SELL.md order = BUY.md order minus account 20 (global_volume_accumulator).
     i.accounts.remove(19);
     i
@@ -287,7 +312,7 @@ pub fn pumpswap_sell_v2_complete(x: &PumpSwapSellV2Inputs) -> Instruction {
     let buyback = buyback_fee_recipient(x.buyback_index);
     let accounts = vec![
         AccountMeta::new(x.pool, false),
-        AccountMeta::new_readonly(x.user, true),
+        AccountMeta::new(x.user, true),
         AccountMeta::new_readonly(pda::amm_global_config(), false),
         AccountMeta::new_readonly(x.base_mint, false),
         AccountMeta::new_readonly(x.quote_mint, false),
@@ -303,10 +328,7 @@ pub fn pumpswap_sell_v2_complete(x: &PumpSwapSellV2Inputs) -> Instruction {
             false,
         ),
         AccountMeta::new_readonly(pda::amm_fee_config(), false),
-        AccountMeta::new_readonly(
-            pda::spl_associated(&buyback, &x.quote_token_program, &x.quote_mint),
-            false,
-        ),
+        AccountMeta::new(buyback, false),
         AccountMeta::new_readonly(x.amm_event_authority, false),
         AccountMeta::new_readonly(amm, false),
     ];
@@ -314,6 +336,7 @@ pub fn pumpswap_sell_v2_complete(x: &PumpSwapSellV2Inputs) -> Instruction {
         &amm,
         PumpSwapIx::SellV2.discriminator(),
         &[x.base_amount_in, x.min_quote_amount_out],
+        None,
         accounts,
     )
 }
@@ -335,27 +358,32 @@ mod tests {
 
     #[test]
     fn v3_shapes_match_doc_tables() {
+        // IDL: buys carry a trailing partial_fill bool; sells do not.
         for (name, ix) in [
-            ("buy_v3", buy_v3(&ctx(), 100, 200, 0)),
+            ("buy_v3", buy_v3(&ctx(), 100, 200, 0, false)),
             (
                 "buy_exact_quote_in_v3",
-                buy_exact_quote_in_v3(&ctx(), 100, 200, 0),
+                buy_exact_quote_in_v3(&ctx(), 100, 200, 0, false),
             ),
             ("sell_v3", sell_v3(&ctx(), 100, 200, 0)),
         ] {
             assert_eq!(ix.accounts.len(), 17, "{name} must take 17 accounts");
             assert_eq!(ix.program_id, pda::pump_program());
-            // Arg encoding: discriminator + 2 u64 LE.
-            assert_eq!(ix.data.len(), 8 + 16, "{name} args");
+            let expected_len = if name.contains("buy") {
+                8 + 16 + 1
+            } else {
+                8 + 16
+            };
+            assert_eq!(ix.data.len(), expected_len, "{name} args");
             assert_eq!(&ix.data[8..16], &100u64.to_le_bytes());
             assert_eq!(&ix.data[16..24], &200u64.to_le_bytes());
         }
         assert_eq!(
-            &buy_v3(&ctx(), 1, 2, 0).data[..8],
+            &buy_v3(&ctx(), 1, 2, 0, false).data[..8],
             &CurveTradeIx::BuyV3.discriminator()
         );
         assert_eq!(
-            &buy_exact_quote_in_v3(&ctx(), 1, 2, 0).data[..8],
+            &buy_exact_quote_in_v3(&ctx(), 1, 2, 0, false).data[..8],
             &CurveTradeIx::BuyExactQuoteInV3.discriminator()
         );
         assert_eq!(
@@ -367,7 +395,7 @@ mod tests {
     #[test]
     fn v3_user_is_the_only_signer() {
         let c = ctx();
-        let ix = buy_v3(&c, 1, 2, 0);
+        let ix = buy_v3(&c, 1, 2, 0, false);
         let signers: Vec<_> = ix.accounts.iter().filter(|m| m.is_signer).collect();
         assert_eq!(signers.len(), 1, "exactly the user signs");
         assert_eq!(signers[0].pubkey, c.user);
@@ -376,7 +404,7 @@ mod tests {
     #[test]
     fn v3_account_order_matches_tradef3_table() {
         let c = ctx();
-        let ix = buy_v3(&c, 1, 2, 3);
+        let ix = buy_v3(&c, 1, 2, 3, false);
         let bc = pda::bonding_curve(&c.base_mint);
         assert_eq!(ix.accounts[0].pubkey, parse(pda::GLOBAL)); // 1 global
         assert_eq!(ix.accounts[5].pubkey, bc); // 6 bonding_curve
@@ -390,7 +418,7 @@ mod tests {
 
     #[test]
     fn v2_shapes_match_doc_tables() {
-        let buy = buy_v2(&ctx(), &extras(), 1, 2, 0);
+        let buy = buy_v2(&ctx(), &extras(), 1, 2, 0, false);
         assert_eq!(buy.accounts.len(), 27, "buy_v2 takes 27 accounts");
         assert_eq!(&buy.data[..8], &CurveTradeIx::BuyV2.discriminator());
 
@@ -413,7 +441,7 @@ mod tests {
 
     #[test]
     fn v2_fee_and_vault_accounts_in_documented_positions() {
-        let ix = buy_v2(&ctx(), &extras(), 1, 2, 0);
+        let ix = buy_v2(&ctx(), &extras(), 1, 2, 0, false);
         let e = extras();
         let c = ctx();
         assert_eq!(ix.accounts[6].pubkey, e.fee_recipient); // 7 fee_recipient
