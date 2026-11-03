@@ -122,6 +122,19 @@ pub fn run(
     risk: &RiskConstraints,
     params: &LegacyParams,
 ) -> LegacyResult {
+    run_with_trace(events, strategy, cash, risk, params).0
+}
+
+/// `run` plus the execution trace the full-portfolio evaluator needs
+/// (equity curve, in-market ticks, open-count curve, entry/exit phases).
+/// The pinned `LegacyResult` fields are byte-identical to `run`.
+pub fn run_with_trace(
+    events: &[Observation],
+    strategy: &mut dyn Strategy,
+    cash: u64,
+    risk: &RiskConstraints,
+    params: &LegacyParams,
+) -> (LegacyResult, crate::eval::EngineTrace) {
     let exit_policy = ExitPolicy {
         max_hold_ms: params.max_hold_ms,
     };
@@ -133,6 +146,7 @@ pub fn run(
     let mut equity_curve: Vec<u64> = Vec::with_capacity(events.len());
     let (mut attempts, mut fills, mut rejected, mut exits, mut no_exit) =
         (0u64, 0u64, 0u64, 0u64, 0u64);
+    let mut trace = crate::eval::EngineTrace::default();
 
     for event in events {
         let mint = event.mint.clone();
@@ -156,8 +170,10 @@ pub fn run(
                         entry_at_ms: position.entry_at_ms,
                         exit_at_ms: event.feature_available_at_ms,
                     });
+                    let exit_net = value as i64 - position.entry_cost as i64;
                     positions.remove(&mint);
                     exits += 1;
+                    trace.exit_phases.push((event.phase, exit_net));
                 } else {
                     no_exit += 1;
                 }
@@ -201,6 +217,7 @@ pub fn run(
                     );
                     seen_accounts.insert(mint.clone());
                     fills += 1;
+                    trace.fill_phases.push(event.phase);
                 } else {
                     rejected += 1;
                 }
@@ -219,7 +236,13 @@ pub fn run(
                 })
                 .sum::<u64>();
         equity_curve.push(equity);
+        let open_now = positions.len() as u64;
+        trace.open_count_curve.push(open_now);
+        if open_now > 0 {
+            trace.ticks_in_market += 1;
+        }
     }
+    trace.equity_curve = equity_curve.clone();
 
     let final_equity = equity_curve.last().copied().unwrap_or(cash);
     let mut peak = cash;
@@ -228,7 +251,7 @@ pub fn run(
         peak = peak.max(*equity);
         max_drawdown = max_drawdown.max(peak - equity);
     }
-    LegacyResult {
+    let result = LegacyResult {
         strategy: strategy.id().as_str().to_string(),
         name: strategy.name().to_string(),
         starting_cash_lamports: cash,
@@ -244,7 +267,8 @@ pub fn run(
         failed_exit_quotes: no_exit,
         closed_net_pnl_lamports: trades.iter().map(|t| t.net_pnl).sum(),
         trades,
-    }
+    };
+    (result, trace)
 }
 
 /// Convenience: run the full S00..S10 registry with identical inputs.

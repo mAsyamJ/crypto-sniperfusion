@@ -189,3 +189,110 @@ fn mode_mismatch_between_cli_and_config_is_rejected() {
     assert!(!ok);
     assert!(stderr.contains("mode"), "stderr: {stderr}");
 }
+
+// ------------------------------------------------------------------ research --
+
+fn repo_fixture(relative: &str) -> PathBuf {
+    // Tests run from the crate dir; fixtures live at the workspace root.
+    let mut p = std::env::current_dir().unwrap();
+    for _ in 0..3 {
+        if p.join("harness").is_dir() {
+            return p.join(relative);
+        }
+        p.pop();
+    }
+    panic!("workspace root not found");
+}
+
+#[test]
+fn research_writes_nonpromotable_receipt_and_refuses_overwrite() {
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().join("receipt.json");
+    let events = repo_fixture("harness/fixtures/research/synthetic_lifecycle.jsonl");
+    if !events.exists() {
+        return; // running outside the workspace checkout
+    }
+    let status = Command::new(bin())
+        .arg("research")
+        .arg("--events")
+        .arg(&events)
+        .arg("--out")
+        .arg(&out)
+        .env("LIVE_TRADING_ENABLED", "false")
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let body: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&out).unwrap()).unwrap();
+    assert_eq!(body["evidence_class"], "SYNTHETIC_SURROGATE_UNCALIBRATED");
+    assert_eq!(body["promotable"], false);
+    assert_eq!(body["live_trading_enabled"], false);
+    assert_eq!(body["no_trade_baseline"], "S00");
+    assert_eq!(body["verdict"], "EDGE_NOT_DEMONSTRATED");
+    assert_eq!(body["engine"], "LegacySurrogateV1");
+    assert_eq!(body["results"].as_array().map(Vec::len), Some(11));
+    assert_eq!(
+        body["dataset"]["sha256"],
+        "ca20dd74c132cef16b13372a827156bd3860b263b2e29c15dd127b96db8c5a93"
+    );
+    // Metrics present for every strategy, S00 first.
+    let metrics = body["metrics"].as_object().unwrap();
+    assert_eq!(metrics.len(), 11);
+    assert_eq!(body["results"][0]["strategy"], "S00");
+    // Write-once: a second identical run must fail, not overwrite.
+    let second = Command::new(bin())
+        .arg("research")
+        .arg("--events")
+        .arg(&events)
+        .arg("--out")
+        .arg(&out)
+        .env("LIVE_TRADING_ENABLED", "false")
+        .status()
+        .unwrap();
+    assert!(!second.success(), "receipts are immutable");
+}
+
+#[test]
+fn research_refuses_live_trading_env() {
+    let dir = tempfile::tempdir().unwrap();
+    let events = repo_fixture("harness/fixtures/research/synthetic_lifecycle.jsonl");
+    if !events.exists() {
+        return;
+    }
+    let status = Command::new(bin())
+        .arg("research")
+        .arg("--events")
+        .arg(&events)
+        .arg("--out")
+        .arg(dir.path().join("x.json"))
+        .env("LIVE_TRADING_ENABLED", "true")
+        .status()
+        .unwrap();
+    assert!(!status.success());
+    assert!(!dir.path().join("x.json").exists());
+}
+
+#[test]
+fn research_receipt_is_bit_identical_across_runs() {
+    let dir = tempfile::tempdir().unwrap();
+    let events = repo_fixture("harness/fixtures/research/synthetic_lifecycle.jsonl");
+    if !events.exists() {
+        return;
+    }
+    let outs = ["a.json", "b.json"].map(|n| dir.path().join(n));
+    for out in &outs {
+        let status = Command::new(bin())
+            .arg("research")
+            .arg("--events")
+            .arg(&events)
+            .arg("--out")
+            .arg(out)
+            .env("LIVE_TRADING_ENABLED", "false")
+            .status()
+            .unwrap();
+        assert!(status.success());
+    }
+    let a = std::fs::read_to_string(&outs[0]).unwrap();
+    let b = std::fs::read_to_string(&outs[1]).unwrap();
+    assert_eq!(a, b, "receipts must be bit-identical for identical inputs");
+}

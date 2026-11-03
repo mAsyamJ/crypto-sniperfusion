@@ -13,6 +13,7 @@
 //!   surrogate parity.
 
 pub mod engine;
+pub mod eval;
 pub mod exit;
 pub mod fees;
 pub mod observation;

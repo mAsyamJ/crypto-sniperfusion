@@ -19,3 +19,5 @@ sniper-protocols.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+solana-sdk.workspace = true
+sniper-core.workspace = true
