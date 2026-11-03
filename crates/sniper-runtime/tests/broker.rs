@@ -573,3 +573,62 @@ fn sell_more_than_position_is_no_fill() {
         Some(NoFillReason::InsufficientPosition { .. })
     ));
 }
+
+
+#[test]
+fn sell_of_second_mint_is_not_paired_with_first_mint_entry() {
+    let mut broker = PaperBroker::new(config());
+    let mint_a = Pubkey::from([21u8; 32]);
+    let mint_b = Pubkey::from([22u8; 32]);
+    for mint in [mint_a, mint_b] {
+        let buy = broker.place(
+            mint, Venue::PumpFun,
+            OrderRequest::Buy { spend: Lamports(50_000_000), min_tokens_out: 0 },
+            meta(), snapshot(100),
+        );
+        assert!(broker.settle(buy, 100).filled());
+    }
+    let qty_b = broker.position(&mint_b).unwrap().quantity;
+    let sell_b = broker.place(
+        mint_b, Venue::PumpFun,
+        OrderRequest::Sell { tokens: qty_b, min_quote_out: Lamports(0) },
+        meta(), snapshot(110),
+    );
+    assert!(broker.settle(sell_b, 110).filled());
+    let rows: Vec<serde_json::Value> = broker.export_closed_trades_jsonl()
+        .lines().map(|line| serde_json::from_str(line).unwrap()).collect();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0]["mint"], mint_b.to_string());
+    assert_eq!(broker.position(&mint_a).unwrap().quantity > 0, true);
+}
+
+#[test]
+fn partial_exits_preserve_remaining_lot_and_do_not_double_charge_entry() {
+    let mut broker = PaperBroker::new(config());
+    let mint = Pubkey::from([23u8; 32]);
+    let buy = broker.place(
+        mint, Venue::PumpFun,
+        OrderRequest::Buy { spend: Lamports(50_000_000), min_tokens_out: 0 },
+        meta(), snapshot(100),
+    );
+    assert!(broker.settle(buy, 100).filled());
+    let total = broker.position(&mint).unwrap().quantity;
+    let half = total / 2;
+    for (qty, slot) in [(half, 110), (total - half, 111)] {
+        let order = broker.place(
+            mint, Venue::PumpFun,
+            OrderRequest::Sell { tokens: qty, min_quote_out: Lamports(0) },
+            meta(), snapshot(slot),
+        );
+        assert!(broker.settle(order, slot).filled());
+    }
+    let rows: Vec<serde_json::Value> = broker.export_closed_trades_jsonl()
+        .lines().map(|line| serde_json::from_str(line).unwrap()).collect();
+    assert_eq!(rows.len(), 2);
+    assert_eq!(rows.iter().map(|row| row["entry_quote_debited"].as_u64().unwrap()).sum::<u64>(), 50_000_000);
+    assert_eq!(rows.iter().map(|row| row["network_fees_lamports"].as_u64().unwrap()).sum::<u64>(), 15_000);
+    assert_eq!(broker.position(&mint).unwrap().quantity, 0);
+    let rebuilt = PaperBroker::replay_ledger(&config(), &broker.ledger_jsonl()).unwrap();
+    assert_eq!(rebuilt.export_closed_trades_jsonl(), broker.export_closed_trades_jsonl());
+}
+
