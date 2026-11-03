@@ -114,7 +114,13 @@ def load_events(path):
     return records
 
 
-def eligible(strategy, event, state, spend):
+def eligible(strategy, event, state, spend, knobs=None):
+    knobs = knobs or {}
+    min_buyers = knobs.get("min_buyers", 5)
+    liquidity_multiple = knobs.get("liquidity_multiple", 20)
+    if (type(min_buyers) is not int or not 1 <= min_buyers <= 30 or
+            type(liquidity_multiple) is not int or not 1 <= liquidity_multiple <= 100):
+        fail("invalid preregistered strategy knobs")
     if strategy == "S00":
         return False
     if not event["coverage_ok"] or event["safety"] != "ELIGIBLE":
@@ -134,12 +140,12 @@ def eligible(strategy, event, state, spend):
     if strategy == "S03":
         return age >= 15000
     if strategy == "S04":
-        return phase == "ACTIVE_CURVE" and buyers >= 5 and flow > 0
+        return phase == "ACTIVE_CURVE" and buyers >= min_buyers and flow > 0
     if strategy == "S05":
         return (phase == "ACTIVE_CURVE" and state["seen_dip"]
                 and event["price_lamports_per_token"] > state["previous_price"])
     if strategy == "S06":
-        return (phase == "ACTIVE_CURVE" and buyers >= 5 and flow > 0
+        return (phase == "ACTIVE_CURVE" and buyers >= min_buyers and flow > 0
                 and event["creator_sell_lamports"] == 0)
     if strategy == "S07":
         return phase == "ACTIVE_CURVE" and 7000 <= progress < 9000
@@ -148,7 +154,7 @@ def eligible(strategy, event, state, spend):
     if strategy == "S09":
         return phase in ("PUMPSWAP_OPEN", "POST_MIGRATION") and buyers >= 3
     if strategy == "S10":
-        return liquidity >= 20 * spend and buyers >= 3 and flow > 0
+        return liquidity >= liquidity_multiple * spend and buyers >= 3 and flow > 0
     fail("unknown strategy")
 
 
@@ -167,7 +173,8 @@ def executable_exit(position, event, slip_bps, tx_cost):
     return max(0, gross * (10000 - cost_bps) // 10000 - tx_cost)
 
 
-def simulate(events, strategy, cash, spend, slip_bps, tx_cost, ata_rent, max_hold_ms):
+def simulate(events, strategy, cash, spend, slip_bps, tx_cost, ata_rent, max_hold_ms,
+             knobs=None):
     balance, positions, seen_accounts = cash, {}, set()
     state, latest, trades = {}, {}, []
     equity_curve, attempts, fills, rejected, exits, no_exit_liquidity = [], 0, 0, 0, 0, 0
@@ -197,7 +204,7 @@ def simulate(events, strategy, cash, spend, slip_bps, tx_cost, ata_rent, max_hol
                     exits += 1
                 else:
                     no_exit_liquidity += 1
-        elif eligible(strategy, e, st, spend):
+        elif eligible(strategy, e, st, spend, knobs):
             attempts += 1
             rent = 0 if mint in seen_accounts else ata_rent
             total_cost = spend + tx_cost + rent

@@ -23,6 +23,7 @@ tracing-subscriber.workspace = true
 clap.workspace = true
 thiserror.workspace = true
 solana-sdk.workspace = true
+solana-client.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

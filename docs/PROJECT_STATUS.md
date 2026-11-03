@@ -103,3 +103,7 @@ keypair ever combined with it). Live devnet smoke through the private endpoint: 
 150 CU) with exact balance deltas and full `getTransaction` receipt. Testnet faucet BLOCKED
 (rate-limited, 2 bounded attempts). RPC URLs live only in a 0600 env file outside the repo;
 Infura key redacted from all docs. Details: `docs/evidence/INFRA-solana-rpc-wallets.md`.
+
+## H5 candidate — Devnet protocol verification and offline research loop (2026-11-04)
+
+Draft PR #6 adds a Devnet-genesis-bound Rust protocol pilot (read-only preflight; explicit transaction test), a separate read-only cluster probe, and bounded synthetic-only research cycles with immutable trial receipts. Full validation is tracked in PR #6. Real Devnet transaction signatures have not been collected by this integration. These demonstrations cannot prove profitability, and mainnet live trading remains disabled. See `docs/DEVNET_EXECUTION_PILOT.md` and `harness/docs/RESEARCH_CYCLE_V1.md`.
