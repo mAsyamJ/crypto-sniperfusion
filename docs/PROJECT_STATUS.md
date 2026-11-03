@@ -15,6 +15,7 @@ Living document; update at every milestone close. Format: state, evidence pointe
 | M3 — V2/V3 + PumpSwap lifecycle | **COMPLETE incl. M3c** (real local execution on Surfpool fork, 2026-11-02) | `docs/evidence/M3.md`, `docs/evidence/M3c.md` |
 | H2 — Real paper broker (event-sourced) | **COMPLETE** (2026-11-02) | `docs/evidence/H2.md` |
 | H4 — Improvement harness CLI skeleton | **COMPLETE** (2026-11-02; H3 shadow window intentionally not started) | `docs/evidence/H4.md` |
+| INFRA — Solana disposable wallets + operator RPC validation | **COMPLETE** (2026-11-04; docs-only, no code change) | `docs/evidence/INFRA-solana-rpc-wallets.md` |
 | M4 — Chainstack parity scope closure | PLANNED | — |
 | M5 — Token intelligence + DevFlowMonitor | PLANNED | — |
 | M6 — Multi-DEX + copy trading | PLANNED | — |
@@ -86,3 +87,13 @@ PDA module (doc-constants verified), exact integer math (curve constant-product,
   and never enables live trading. Tests: 167/167 both feature sets.
 - **H3**: NOT STARTED (needs ≥7 days read-only observation; the harness
   `shadow` command refuses to fabricate it).
+
+## INFRA results (2026-11-04, operator-authorized)
+
+Disposable devnet/testnet wallets + operator-provided Infura RPC (mainnet+devnet) validated.
+Genesis hashes cross-checked against public clusters (MATCH ×2; mainnet strictly read-only, no
+keypair ever combined with it). Live devnet smoke through the private endpoint: `requestAirdrop`
+1 SOL confirmed, then signed 0.001 SOL transfer finalized (slot 518298780, fee 5000 lamports,
+150 CU) with exact balance deltas and full `getTransaction` receipt. Testnet faucet BLOCKED
+(rate-limited, 2 bounded attempts). RPC URLs live only in a 0600 env file outside the repo;
+Infura key redacted from all docs. Details: `docs/evidence/INFRA-solana-rpc-wallets.md`.
