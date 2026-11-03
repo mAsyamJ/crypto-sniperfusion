@@ -63,3 +63,11 @@ python3 harness/research_batch.py diagnose --report harness/runs/local-demo.json
 ```
 
 The script is not a calibrated Solana paper broker, historical market replay, execution-quality simulator, or source of profitable strategy evidence. It cannot sign or broadcast and refuses `LIVE_TRADING_ENABLED`. Existing H4 `snf-harness` controls remain the authority for future evidence gates; its `shadow` still honestly returns NOT_STARTED.
+
+## H5 candidate: experimental Devnet pilot and iteration controller
+
+Read `docs/DEVNET_EXECUTION_PILOT.md` and `harness/docs/RESEARCH_CYCLE_V1.md` from repository root.
+
+Run `python3 harness/research_cycle.py --events harness/fixtures/research/synthetic_lifecycle.jsonl --out harness/runs/three-rounds.json --cycles 3` to test a bounded synthetic strategy iteration. All receipts are non-promotable and do not establish trading profit.
+
+Run `python3 harness/cluster_probe.py --cluster devnet` for a read-only network/program check. The Rust `devnet-pump-pilot` binary offers optional, narrowly bounded Devnet program mechanics tests against a provided eligible Devnet mint. No Mainnet transactions or autonomous sniping are enabled. Keep test signer files private and outside git.
