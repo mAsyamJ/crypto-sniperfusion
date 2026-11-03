@@ -16,6 +16,7 @@ Living document; update at every milestone close. Format: state, evidence pointe
 | H2 — Real paper broker (event-sourced) | **COMPLETE** (2026-11-02) | `docs/evidence/H2.md` |
 | H4 — Improvement harness CLI skeleton | **COMPLETE** (2026-11-02; H3 shadow window intentionally not started) | `docs/evidence/H4.md` |
 | INFRA — Solana disposable wallets + operator RPC validation | **COMPLETE** (2026-11-04; docs-only, no code change) | `docs/evidence/INFRA-solana-rpc-wallets.md` |
+| INFRA-2 — Operator RPCs integrated: `sniper rpc-probe` + endpoint resolution | **COMPLETE** (2026-11-04; full engineering loop, 179/179 tests ×2) | `docs/evidence/INFRA-2-rpc-integration.md` |
 | M4 — Chainstack parity scope closure | PLANNED | — |
 | M5 — Token intelligence + DevFlowMonitor | PLANNED | — |
 | M6 — Multi-DEX + copy trading | PLANNED | — |
@@ -103,6 +104,21 @@ keypair ever combined with it). Live devnet smoke through the private endpoint: 
 150 CU) with exact balance deltas and full `getTransaction` receipt. Testnet faucet BLOCKED
 (rate-limited, 2 bounded attempts). RPC URLs live only in a 0600 env file outside the repo;
 Infura key redacted from all docs. Details: `docs/evidence/INFRA-solana-rpc-wallets.md`.
+
+## INFRA-2 results (2026-11-04, operator-authorized)
+
+Operator RPCs are now integrated in the Rust system: `sniper rpc-probe --cluster
+mainnet|devnet|testnet` resolves endpoints (`SNF_{MAINNET,DEVNET,TESTNET}_RPC_URL` env
+override → pinned public fallback; invalid env = hard error, never silent fallback),
+verifies cluster identity against pinned genesis hashes, and prints a credential-safe JSON
+report (`redact_url` strips path/query — Infura keys are unprintable by construction; live
+leak grep = 0). Structurally read-only: four getter calls, no signer types, no send path.
+Live-verified against both operator endpoints + public testnet. Gates: fmt, clippy ×2,
+tests 179/179 ×2 (6 new contract tests incl. offline mock JSON-RPC happy + genesis-mismatch
+paths). Faucet status: devnet wallet funded (0.998995 SOL); RPC faucets CLOSED cluster-wide
+(HTTP 410, devnet-via-Infura and testnet-public) — testnet funding is operator-manual via
+https://faucet.solana.com (address in evidence). `SNF_SOURCE_RPC` for Surfpool forks can now
+be fed from `SNF_MAINNET_RPC_URL` (read-only). Details: `docs/evidence/INFRA-2-rpc-integration.md`.
 
 ## H5 candidate — Devnet protocol verification and offline research loop (2026-11-04)
 

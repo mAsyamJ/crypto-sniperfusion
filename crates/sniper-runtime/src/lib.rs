@@ -12,6 +12,7 @@ pub mod ingest;
 pub mod journal;
 pub mod lifecycle;
 pub mod paper;
+pub mod rpc_probe;
 pub mod runner;
 
 pub use bus::{Priority, PriorityBus, PublishOutcome};
@@ -23,6 +24,10 @@ pub use ingest::{
 pub use journal::{FileJournal, JournalRecord, LifecycleStage, TxJournal};
 pub use lifecycle::{LifecycleError, LifecycleMachine, OrderRecord, OrderState};
 pub use paper::{paper_buy, paper_sell, CurveSnapshot, PaperBuyFill, PaperSellFill};
+pub use rpc_probe::{
+    probe_endpoint, redact_url, resolve_endpoint, Cluster, ClusterProbeReport, EndpointSource,
+    ProbeError, ResolvedEndpoint,
+};
 pub use runner::{Decision, DecisionHook, ReplayRunner, RunSummary};
 
 #[cfg(feature = "live")]

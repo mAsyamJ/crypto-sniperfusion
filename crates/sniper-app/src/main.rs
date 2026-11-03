@@ -6,12 +6,14 @@ mod redact;
 
 use std::path::PathBuf;
 use std::process::ExitCode;
+use std::time::Duration;
 
 use clap::{Parser, Subcommand};
 use sniper_core::config::{AppConfig, RunMode};
 use sniper_runtime::broker::{PaperBrokerConfig, PaperBrokerHook};
+use sniper_runtime::rpc_probe::{probe_endpoint, redact_url, resolve_endpoint};
 use sniper_runtime::runner::{CountingHook, ReplayRunner};
-use sniper_runtime::{acquire_live, LiveGateInputs};
+use sniper_runtime::{acquire_live, Cluster, LiveGateInputs};
 
 #[derive(Debug, Parser)]
 #[command(
@@ -54,6 +56,16 @@ enum Command {
         #[arg(long)]
         fixtures: PathBuf,
     },
+    /// Read-only cluster RPC probe: resolves the endpoint (operator env
+    /// override SNF_{MAINNET,DEVNET,TESTNET}_RPC_URL -> pinned public
+    /// cluster URL), verifies cluster identity by genesis hash, and reports
+    /// version/slot/epoch. No signer is loaded; this cannot broadcast.
+    RpcProbe {
+        #[arg(long, value_enum)]
+        cluster: ClusterArg,
+        #[arg(long, default_value_t = 15)]
+        timeout_secs: u64,
+    },
     /// Live trading. Requires a `live`-feature build plus four runtime gates.
     Live {
         #[arg(long)]
@@ -61,6 +73,24 @@ enum Command {
         #[arg(long, default_value = "/tmp/snf-kill-switch")]
         kill_switch_path: PathBuf,
     },
+}
+
+/// CLI-facing cluster names (clap ValueEnum) mapped onto the runtime enum.
+#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+enum ClusterArg {
+    Mainnet,
+    Devnet,
+    Testnet,
+}
+
+impl From<ClusterArg> for Cluster {
+    fn from(v: ClusterArg) -> Self {
+        match v {
+            ClusterArg::Mainnet => Cluster::MainnetBeta,
+            ClusterArg::Devnet => Cluster::Devnet,
+            ClusterArg::Testnet => Cluster::Testnet,
+        }
+    }
 }
 
 fn init_tracing() {
@@ -88,6 +118,10 @@ fn main() -> ExitCode {
             run_replay_mode(config, Some(fixtures), RunMode::Paper)
         }
         Command::DecodeEvents { fixtures } => decode_events::run(fixtures),
+        Command::RpcProbe {
+            cluster,
+            timeout_secs,
+        } => run_rpc_probe(cluster.into(), timeout_secs),
         Command::Live {
             config,
             kill_switch_path,
@@ -105,6 +139,22 @@ fn main() -> ExitCode {
             ExitCode::FAILURE
         }
     }
+}
+
+/// Read-only cluster probe (INFRA-2): resolve endpoint (operator env ->
+/// pinned public), verify cluster identity by genesis, print JSON report.
+fn run_rpc_probe(cluster: Cluster, timeout_secs: u64) -> Result<String, String> {
+    let endpoint =
+        resolve_endpoint(cluster, |var| std::env::var(var).ok()).map_err(|e| e.to_string())?;
+    tracing::info!(
+        cluster = %cluster,
+        source = ?endpoint.source,
+        url = %redact_url(&endpoint.url),
+        "probing cluster endpoint (read-only)"
+    );
+    let report =
+        probe_endpoint(&endpoint, Duration::from_secs(timeout_secs)).map_err(|e| e.to_string())?;
+    serde_json::to_string_pretty(&report).map_err(|e| e.to_string())
 }
 
 fn run_replay_mode(
