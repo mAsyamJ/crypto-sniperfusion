@@ -114,14 +114,21 @@ fn local_pilot_key(path: &Path) -> Result<Keypair, String> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|_| "cannot create pilot key directory")?;
     }
-    let key = Keypair::new();
-    write_keypair_file(&key, path).map_err(|_| "cannot store local pilot key")?;
+    // Create the file with restrictive permissions BEFORE writing any
+    // secret bytes, avoiding a transient world-readable keypair.
+    let _placeholder = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+        .map_err(|_| "cannot reserve dedicated pilot key file")?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))
             .map_err(|_| "cannot secure pilot key file")?;
     }
+    let key = Keypair::new();
+    write_keypair_file(&key, path).map_err(|_| "cannot store local pilot key")?;
     Ok(key)
 }
 
