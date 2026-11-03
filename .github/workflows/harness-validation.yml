@@ -31,6 +31,13 @@ jobs:
         run: |
           python3 harness/research_cycle.py --events harness/fixtures/research/synthetic_lifecycle.jsonl --out /tmp/snf-research-cycles-ci.json --cycles 3
           python3 -c 'import json; x=json.load(open("/tmp/snf-research-cycles-ci.json")); assert x["promotable"] is False and x["total_trials_recorded"] == 99 and x["sealed_check_read_count"] == 1 and x["final_candidate"] in ["S%02d" % i for i in range(11)]'
+      - name: Master agent mission offline workflow smoke
+        env:
+          LIVE_TRADING_ENABLED: "false"
+        run: |
+          python3 harness/agent_mission.py plan
+          python3 harness/agent_mission.py run --events harness/fixtures/research/synthetic_lifecycle.jsonl --cycles 2 --out /tmp/snf-agent-mission-ci.json
+          python3 -c 'import json; x=json.load(open("/tmp/snf-agent-mission-ci.json")); assert x["promotable"] is False and x["devnet_execution"] is False and x["mainnet_execution"] is False and x["experiment"]["total_trials_recorded"] == 66 and x["gates"]["G5_mainnet_read_only_shadow"] == "NOT_STARTED"'
       - name: Ten strategy surrogate CI smoke (no network/signing)
         env:
           LIVE_TRADING_ENABLED: "false"
