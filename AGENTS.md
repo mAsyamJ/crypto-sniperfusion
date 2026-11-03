@@ -42,3 +42,13 @@ M0 → M9 per amended sequence (`AGENT_MASTER_PROMPT.md` §8 as amended). A mile
 Use repository-local Agent Skills in `.agents/skills/*/SKILL.md` based on the task: `pump-protocol-forensics`, `memecoin-lifecycle-research`, `sniper-microstructure`, `sniper-quant-research`, `sniper-security-redteam`, `solana-execution-reliability`, `research-harness-conductor`, and `independent-strategy-critic`. These instructions are **playbooks**, not live capabilities.
 
 New research flow: `harness/docs/RESEARCH_LOOP_RUNBOOK.md`. V0 `harness/research_batch.py` is a strictly offline **synthetic surrogate** and its outputs are permanently `promotable=false`. Do not feed them to the H4 `promote` command, label them as chain-execution evidence or use them to claim profitability. Only verified real-program/fork and real shadow sources may contribute to their respective gates. Candidate generators and independent critics must be separate roles. No AI process can access funded keys, submit transactions or change live strategy configurations.
+
+
+## Devnet-only program pilot and bounded research loops (PR #6, 2026-11-04)
+
+- Read \`docs/DEVNET_EXECUTION_PILOT.md\` before any test-network operations. There is **NO** support or authorization for agent-controlled mainnet transactions.
+- Dedicated \`devnet-pump-pilot\` is a separate **Devnet-genesis-pinned** CLI that cannot acquire the production \`LiveCapability\`; it has a hard buy cap, mint and Token-2022 validation, simulation, private local faucet wallet, durable intent journal and at most one buy plus one sell. Never point to the default or funded Solana CLI signer, never share keys with AI.
+- \`harness/cluster_probe.py\` provides strictly read-only program executability and genesis checks for Devnet/Testnet; Pump is documented on Devnet, not Testnet.
+- \`harness/research_cycle.py\` uses **synthetic** inputs only, finite trial counts, preregistered parameter changes, adverse execution scenarios and a single sealed toy check. All receipts \`promotable=false\`. It is NOT a production backtester, automated LLM agent or a credible alpha claim.
+- Skills: \`.agents/skills/devnet-protocol-pilot/SKILL.md\` and \`.agents/skills/strategy-experiment-orchestrator/SKILL.md\`.
+- No automated signer connections, live snipes, paid RPC service activation or unbounded self-improvement loops. Real Devnet trade signature can only be claimed after operator executes and reconciles it.
