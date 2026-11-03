@@ -251,7 +251,7 @@ fn run(args: Args) -> Result<Value, String> {
         "genesis":genesis.to_string(),
         "mint":mint.to_string(),
         "wallet_pubkey":key.pubkey().to_string(),
-        "pilot_key_path":DEFAULT_KEY,
+        "pilot_key_path":args.pilot_keypair.to_string_lossy(),
         "submitted":true,
         "buy_signature":buy_signature,
         "tokens_received":filled,
