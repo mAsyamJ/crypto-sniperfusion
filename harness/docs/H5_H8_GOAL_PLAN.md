@@ -1,6 +1,6 @@
 # SniperFusion H5–H8 Goal Plan and Acceptance Matrix
 
-**Date:** 2026-11-04. **Owner:** SniperFusion engineering. **Authoritative coding mission:** [MASTER_AGENT_MISSION_H5_H8.md](MASTER_AGENT_MISSION_H5_H8.md). **Implementation branch:** \`codex/devnet-pilot-research-loop-20261104\` / draft PR #6, based on merged PR #2. Verify current HEAD/PR before working.
+**Date:** 2026-11-04. **Owner:** SniperFusion engineering. **Authoritative coding mission:** [MASTER_AGENT_MISSION_H5_H8.md](MASTER_AGENT_MISSION_H5_H8.md). **Implementation branch:** `codex/devnet-pilot-research-loop-20261104` / draft PR #6, based on merged PR #2. Verify current HEAD/PR before working.
 
 ## North-star: what counts as success?
 
@@ -37,17 +37,17 @@ Neither the current Python synthetic batch nor Devnet faucet transactions are ev
 
 ### 1. Millisecond market loop — only deterministic, no AI or key by default
 
-\`OBSERVE → CHECK_GAP/AGE → DECODE → AS_OF_FEATURES → LIFECYCLE → TOKEN_SAFETY → ROUTER → RISK → PAPER_INTENT → FILL/EXIT_MODEL → LEDGER\`. For any stale snapshot, missing source or uncertain P&L account state, use NO_TRADE and preserve evidence. Live execution is not connected.
+`OBSERVE → CHECK_GAP/AGE → DECODE → AS_OF_FEATURES → LIFECYCLE → TOKEN_SAFETY → ROUTER → RISK → PAPER_INTENT → FILL/EXIT_MODEL → LEDGER`. For any stale snapshot, missing source or uncertain P&L account state, use NO_TRADE and preserve evidence. Live execution is not connected.
 
 ### 2. Per-commit engineering loop
 
-\`AUDIT HEAD → DEFINE AC → FAILING TEST → IMPLEMENT MINIMAL DIFF → fmt → Clippy → unit/integration → Surfpool where required → independent review → evidence + SHA → PR\`. No skipped tests counted as PASS. If tests fail, STOP; do not advance.
+`AUDIT HEAD → DEFINE AC → FAILING TEST → IMPLEMENT MINIMAL DIFF → fmt → Clippy → unit/integration → Surfpool where required → independent review → evidence + SHA → PR`. No skipped tests counted as PASS. If tests fail, STOP; do not advance.
 
 ### 3. Research scientific loop, capped
 
-\`FREEZE DEV DATA → HYPOTHESIS → S00 + S01–S10 under matched capital → COST/LATENCY STRESS → NEGATIVE CONTROLS → CRITIC → RETAIN/REJECT → (<=20 total cycles) → FREEZE CHAMPION → ONCE-ONLY OOS → FORK → SHADOW → HUMAN PAPER REVIEW\`.
+`FREEZE DEV DATA → HYPOTHESIS → S00 + S01–S10 under matched capital → COST/LATENCY STRESS → NEGATIVE CONTROLS → CRITIC → RETAIN/REJECT → (<=20 total cycles) → FREEZE CHAMPION → ONCE-ONLY OOS → FORK → SHADOW → HUMAN PAPER REVIEW`.
 
-The currently executable \`harness/research_cycle.py\` implements **synthetic demonstration** of a bounded variation of this loop. An AI agent must not self-select mints and immediately submit orders.
+The currently executable `harness/research_cycle.py` implements **synthetic demonstration** of a bounded variation of this loop. An AI agent must not self-select mints and immediately submit orders.
 
 ## Network matrix
 
@@ -64,11 +64,11 @@ Reference official documentation: https://solana.com/docs/references/clusters an
 
 ## This PR's operational controls
 
-\`harness/agent_mission.py\` is a **runnable safe mission controller**. It carries an explicit inventory of unverified gates, invokes only a fixed Python unittest command with a sanitized environment, checks synthetic feature chronology and runs a fixed number (1–20) of experiments in \`harness/research_cycle.py\`. It writes an exclusive, fsynced JSON report with code/data/mission hashes and permanently \`promotable=false\`. It never connects an RPC, signs, attempts a Devnet buy or uses an LLM.
+`harness/agent_mission.py` is a **runnable safe mission controller**. It carries an explicit inventory of unverified gates, invokes only a fixed Python unittest command with a sanitized environment, checks synthetic feature chronology and runs a fixed number (1–20) of experiments in `harness/research_cycle.py`. It writes an exclusive, fsynced JSON report with code/data/mission hashes and permanently `promotable=false`. It never connects an RPC, signs, attempts a Devnet buy or uses an LLM.
 
 Commands from repository root:
 
-\`\`\`bash
+```bash
 python3 harness/agent_mission.py plan
 python3 harness/agent_mission.py run \
   --events harness/fixtures/research/synthetic_lifecycle.jsonl \
@@ -78,15 +78,15 @@ python3 harness/agent_mission.py run \
 # Existing guarded Devnet preflight (read-only, needs network and eligible mint):
 python3 harness/cluster_probe.py --cluster devnet
 cargo run -p sniper-app --bin devnet-pump-pilot -- --mint VERIFIED_DEVNET_PUMP_MINT
-\`\`\`
+```
 
-No output of \`agent_mission.py\` may be imported by H4 \`promote\` as a real OOS or shadow receipt.
+No output of `agent_mission.py` may be imported by H4 `promote` as a real OOS or shadow receipt.
 
 ## Hand-off PR order
 
 **PR-next-1, correctness & protocol test:** confirm Devnet pilot preflight and actual signature if available, reconcile the claimable accumulator; freeze protocol truth table and negative tests. If an operator test is not possible, report BLOCKED and continue with offline implementation; do not fake it.
 
-**PR-next-2, lifecycle source:** implement new \`CanonicalChainEvent\` and \`ObservedEvent\` types, completeness accounting and all Pump.fun creation event denominator in a bounded read-only window. Include provider gap/reorg tests.
+**PR-next-2, lifecycle source:** implement new `CanonicalChainEvent` and `ObservedEvent` types, completeness accounting and all Pump.fun creation event denominator in a bounded read-only window. Include provider gap/reorg tests.
 
 **PR-next-3, economic science:** implement a pure Rust 11-policy replay with a separate full NAV independent oracle and calibrated fork-derived cost model; add negative controls and true temporal/creator splits.
 
