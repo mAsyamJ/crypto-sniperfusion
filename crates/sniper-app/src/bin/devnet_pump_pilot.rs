@@ -88,8 +88,7 @@ fn guard(genesis: &str, tokens: u64, max_cost: u64, min_sell: u64) -> Result<(),
 fn must_be_offline_mainnet() -> Result<(), String> {
     if std::env::var("LIVE_TRADING_ENABLED")
         .unwrap_or_default()
-        .to_ascii_lowercase()
-        == "true"
+        .eq_ignore_ascii_case("true")
     {
         return Err("pilot requires LIVE_TRADING_ENABLED=false".into());
     }
