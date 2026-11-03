@@ -573,14 +573,13 @@ impl PaperBroker {
             let exit_network = if last_part {
                 self.config.network_fee_lamports.0 - distributed_network
             } else {
-                (self.config.network_fee_lamports.0 as u128 * matched as u128
-                    / tokens as u128) as u64
+                (self.config.network_fee_lamports.0 as u128 * matched as u128 / tokens as u128)
+                    as u64
             };
             let exit_tip = if last_part {
                 self.config.tip_lamports.0 - distributed_tip
             } else {
-                (self.config.tip_lamports.0 as u128 * matched as u128 / tokens as u128)
-                    as u64
+                (self.config.tip_lamports.0 as u128 * matched as u128 / tokens as u128) as u64
             };
             self.closed.push(ClosedTrade {
                 trade_id: self.next_trade_id,
