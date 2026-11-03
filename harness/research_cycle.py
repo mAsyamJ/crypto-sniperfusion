@@ -60,7 +60,7 @@ def partition(events):
     )
 
 
-def simulate_scenario(events, scenario, cash, spend, max_hold_ms):
+def simulate_scenario(events, scenario, cash, spend, max_hold_ms, knobs=None):
     observed = copy.deepcopy(events)
     div = scenario["liquidity_divisor"]
     for e in observed:
@@ -69,7 +69,7 @@ def simulate_scenario(events, scenario, cash, spend, max_hold_ms):
         simulate(
             observed, strategy, cash, spend,
             scenario["slip_bps"], scenario["tx_cost"],
-            1_500_000, max_hold_ms,
+            1_500_000, max_hold_ms, knobs=knobs,
         )
         for strategy in STRATEGIES
     ]
@@ -128,16 +128,30 @@ def cycle_report(
     dev_hash, sealed_hash = sha(development), sha(sealed)
     receipts = []
     for idx in range(1, cycles + 1):
-        # Repeat an experiment with the SAME frozen version; iteration is
-        # recorded and cannot silently promote or optimize sealed labels.
+        # Real iteration in a safe sandbox: freeze a deterministic candidate
+        # specification BEFORE running this development-only ablation.
+        knobs = {
+            "min_buyers": min(30, 2 + idx * 2),
+            "liquidity_multiple": min(100, 5 + idx * 5),
+        }
+        preregistration = {
+            "cycle": idx, "knobs": knobs, "dataset": dev_hash,
+            "strategy_ids": sorted(STRATEGIES),
+            "scenario_ids": sorted(SCENARIOS),
+        }
+        preregistration_sha256 = sha(preregistration)
         scenarios = {
-            name: simulate_scenario(development, scenario, cash, spend, max_hold_ms)
+            name: simulate_scenario(
+                development, scenario, cash, spend, max_hold_ms, knobs=knobs
+            )
             for name, scenario in SCENARIOS.items()
         }
         hypothesis = make_proposal(idx, scenarios)
         trial = {
             "cycle": idx,
             "candidate": hypothesis["candidate"],
+            "strategy_knobs": knobs,
+            "preregistration_sha256": preregistration_sha256,
             "development_sha256": dev_hash,
             "trials_in_cycle": len(SCENARIOS) * len(STRATEGIES),
             "hypothesis": hypothesis,
@@ -151,22 +165,43 @@ def cycle_report(
         trial["receipt_sha256"] = sha(trial)
         receipts.append(trial)
 
-    # A single final sanity check; NEVER feed this result back into candidate
-    # selection. It cannot count as proper untouched temporal OOS.
-    champion = receipts[-1]["candidate"]
-    heldout = {
-        name: next(
-            r for r in simulate_scenario(sealed, sc, cash, spend, max_hold_ms)
-            if r["strategy"] == champion
+    # Pick the champion using ONLY development scores across all cycles;
+    # do not inspect sealed outcomes until the candidate spec is frozen.
+    def worst_adjusted_score(trial):
+        s = trial["candidate"]
+        return min(
+            next(row for row in rows if row["strategy"] == s)["net_pnl_lamports"]
+            - next(row for row in rows if row["strategy"] == s)["max_drawdown_lamports"]
+            for rows in trial["development_results"].values()
+        )
+    best = max(
+        receipts,
+        key=lambda trial: (
+            worst_adjusted_score(trial),
+            trial["candidate"] == "S00", -trial["cycle"],
+        ),
+    )
+    champion = best["candidate"]
+    champion_knobs = best["strategy_knobs"]
+    frozen_candidate_sha256 = sha({
+        "strategy": champion, "knobs": champion_knobs,
+        "development_hash": dev_hash, "preregistration": best["preregistration_sha256"],
+    })
+    # This is ONE logical sealed evaluation event (3 execution scenarios),
+    # never used to alter champion parameters or re-run selection.
+    sealed_scenarios = {
+        name: simulate_scenario(
+            sealed, sc, cash, spend, max_hold_ms, knobs=champion_knobs
         )
         for name, sc in SCENARIOS.items()
     }
+    heldout = {
+        name: next(r for r in rows if r["strategy"] == champion)
+        for name, rows in sealed_scenarios.items()
+    }
     comparison = {
-        name: next(
-            r for r in simulate_scenario(sealed, sc, cash, spend, max_hold_ms)
-            if r["strategy"] == "S00"
-        )
-        for name, sc in SCENARIOS.items()
+        name: next(r for r in rows if r["strategy"] == "S00")
+        for name, rows in sealed_scenarios.items()
     }
     return {
         "schema_version": 1, "research_version": RESEARCH_VERSION,
@@ -182,6 +217,8 @@ def cycle_report(
         "total_trials_recorded": cycles * len(SCENARIOS) * len(STRATEGIES),
         "cycles": receipts,
         "final_candidate": champion,
+        "final_strategy_knobs": champion_knobs,
+        "frozen_candidate_sha256": frozen_candidate_sha256,
         "sealed_check_read_count": 1,
         "sealed_check": heldout,
         "sealed_no_trade": comparison,
