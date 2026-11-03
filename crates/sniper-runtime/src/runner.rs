@@ -74,8 +74,11 @@ pub struct RunSummary {
     pub by_priority: HashMap<Priority, u64>,
 }
 
-/// Replay/paper pipeline: load events → dedup → classify priority → bus →
-/// drain in priority order → decision hook. Deterministic for a fixed input.
+/// Replay/paper pipeline: load events → dedup → classify → decision hook.
+/// A historical replay MUST process observations in input order. Priority
+/// queues may be used for LIVE overload scheduling, never to rewrite causal
+/// event order in a backtest. Fixture order is the observed order; canonical
+/// chain-order replays need a separately verified ordered dataset.
 pub struct ReplayRunner {
     dedup_capacity: usize,
     bus_capacity: usize,
@@ -117,7 +120,10 @@ impl ReplayRunner {
         let mut bus: PriorityBus<ChainEvent> = PriorityBus::new(self.bus_capacity);
         let mut summary = RunSummary::default();
 
-        // Phase 1: ingest (dedup before decisioning).
+        // Drain each event before enqueueing the next so no priority tier
+        // can jump ahead of an earlier observation. Replay never sheds data.
+        // This bus remains a bounded handoff; live overload policy lives in
+        // the independent streaming runtime.
         for event in events {
             summary.events_in += 1;
             match dedup.register(event.id) {
@@ -141,13 +147,11 @@ impl ReplayRunner {
                     });
                 }
             }
-        }
-
-        // Phase 2: drain in strict priority order and decide.
-        while let Some((priority, event)) = bus.try_recv() {
-            *summary.by_priority.entry(priority).or_insert(0) += 1;
-            let decisions = hook.on_event(&event);
-            summary.decisions += decisions.len() as u64;
+            while let Some((priority, observed)) = bus.try_recv() {
+                *summary.by_priority.entry(priority).or_insert(0) += 1;
+                let decisions = hook.on_event(&observed);
+                summary.decisions += decisions.len() as u64;
+            }
         }
         Ok(summary)
     }
@@ -276,6 +280,45 @@ mod tests {
         assert_eq!(hook.buys_proposed, 1);
         assert_eq!(summary.decisions, 1);
         // Spend is zero at M1: paper intents carry no money until M3 fills.
+    }
+
+    #[test]
+    fn historical_replay_preserves_input_order_across_priority_tiers() {
+        #[derive(Default)]
+        struct OrderedHook(Vec<&'static str>);
+        impl DecisionHook for OrderedHook {
+            fn on_event(&mut self, e: &ChainEvent) -> Vec<Decision> {
+                self.0.push(match &e.payload {
+                    EventPayload::TokenCreated { .. } => "create",
+                    EventPayload::TradeObserved { .. } => "trade",
+                    EventPayload::MigrationObserved { .. } => "migrate",
+                    _ => "other",
+                });
+                Vec::new()
+            }
+        }
+        let created = event(1);
+        let mut migrated = event(2);
+        migrated.payload = EventPayload::MigrationObserved {
+            mint: Pubkey::new_unique(),
+            to: Venue::PumpSwap,
+        };
+        let mut hook = OrderedHook::default();
+        let summary = ReplayRunner::new(32, 1)
+            .run(&[created, migrated], &mut hook)
+            .unwrap();
+        assert_eq!(hook.0, vec!["create", "migrate"]);
+        assert_eq!(summary.shed_speculative, 0);
+    }
+
+    #[test]
+    fn replay_does_not_drop_events_at_small_bus_capacity() {
+        let events = (0..10).map(|i| event(i as u8)).collect::<Vec<_>>();
+        let mut hook = CountingHook::default();
+        let summary = ReplayRunner::new(32, 1).run(&events, &mut hook).unwrap();
+        assert_eq!(summary.published, 10);
+        assert_eq!(summary.shed_speculative, 0);
+        assert_eq!(hook.observed, 10);
     }
 
     #[test]

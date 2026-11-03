@@ -250,15 +250,17 @@ pub struct PaperBroker {
     peak_equity: i128,
     max_drawdown: i128,
     ledger: Vec<BrokerCommand>,
-    /// Open (unpaired) buy entries keyed by order id — FIFO pairing.
+    /// Unmatched buy lots; exits match FIFO WITHIN THE SAME MINT, including
+    /// partial exits. The global insertion order is not a global cost basis.
     open_entries: Vec<ClosedEntry>,
 }
 
 /// Entry side of a future ClosedTrade, waiting for its exit.
 #[derive(Debug, Clone)]
 struct ClosedEntry {
-    #[allow(dead_code)] // paired by FIFO position, kept for audit parity
+    #[allow(dead_code)] // audit provenance
     order_id: u64,
+    remaining_tokens: u64,
     strategy: String,
     mint: Pubkey,
     decision_at_ms: u64,
@@ -475,6 +477,7 @@ impl PaperBroker {
 
         self.open_entries.push(ClosedEntry {
             order_id,
+            remaining_tokens: fill.tokens_out,
             strategy: meta.strategy,
             mint,
             decision_at_ms: meta.decided_at_ms,
@@ -539,36 +542,80 @@ impl PaperBroker {
         self.cash.0 +=
             net.saturating_sub(self.config.network_fee_lamports.0 + self.config.tip_lamports.0);
 
-        // Average-cost share of the position being closed: `quantity`
-        // ALREADY includes the tokens being sold (checked above), so the
-        // pre-sell quantity is exactly the current value.
-        let pos = self.positions.get_mut(&mint).expect("checked above");
-        let cost_share = (pos.cost_basis.0 as u128 * tokens as u128 / pos.quantity as u128) as u64;
-        pos.quantity -= tokens;
-        pos.cost_basis.0 = pos.cost_basis.0.saturating_sub(cost_share);
-        self.realized_pnl += net as i128 - cost_share as i128;
-
-        // FIFO: pair with the oldest open entry.
-        if !self.open_entries.is_empty() {
-            let entry = self.open_entries.remove(0);
-            let trade_id = self.next_trade_id;
-            self.next_trade_id += 1;
+        // Match lots only for this mint. Split both entry economics and
+        // exit proceeds/fees proportionally; the final matched segment gets
+        // the integer-division remainder. Partial exits retain an open lot.
+        let mut unmatched = tokens;
+        let mut cost_share = 0u64;
+        let mut distributed_proceeds = 0u64;
+        let mut distributed_network = 0u64;
+        let mut distributed_tip = 0u64;
+        while unmatched > 0 {
+            let idx = self
+                .open_entries
+                .iter()
+                .position(|entry| entry.mint == mint && entry.remaining_tokens > 0)
+                .expect("filled position must have an unmatched mint-specific lot");
+            let entry = &mut self.open_entries[idx];
+            let matched = unmatched.min(entry.remaining_tokens);
+            let last_part = matched == unmatched;
+            let allocate = |amount: u64, denominator: u64| -> u64 {
+                (amount as u128 * matched as u128 / denominator as u128) as u64
+            };
+            let entry_cost = allocate(entry.entry_quote_debited, entry.remaining_tokens);
+            let entry_network = allocate(entry.entry_network_fee, entry.remaining_tokens);
+            let entry_tip = allocate(entry.entry_tip, entry.remaining_tokens);
+            let proceeds = if last_part {
+                net - distributed_proceeds
+            } else {
+                (net as u128 * matched as u128 / tokens as u128) as u64
+            };
+            let exit_network = if last_part {
+                self.config.network_fee_lamports.0 - distributed_network
+            } else {
+                (self.config.network_fee_lamports.0 as u128 * matched as u128 / tokens as u128)
+                    as u64
+            };
+            let exit_tip = if last_part {
+                self.config.tip_lamports.0 - distributed_tip
+            } else {
+                (self.config.tip_lamports.0 as u128 * matched as u128 / tokens as u128) as u64
+            };
             self.closed.push(ClosedTrade {
-                trade_id,
-                strategy: entry.strategy,
-                mint: entry.mint.to_string(),
+                trade_id: self.next_trade_id,
+                strategy: entry.strategy.clone(),
+                mint: mint.to_string(),
                 decision_at_ms: entry.decision_at_ms,
                 features_observed_at_ms: entry.features_observed_at_ms,
                 entry_at_ms: entry.entry_at_ms,
                 exit_at_ms: meta_of_sell.decided_at_ms + FILL_LAND_MS,
-                entry_quote_debited: entry.entry_quote_debited,
-                exit_quote_received: net,
-                network_fees_lamports: entry.entry_network_fee + self.config.network_fee_lamports.0,
-                tips_lamports: entry.entry_tip + self.config.tip_lamports.0,
+                entry_quote_debited: entry_cost,
+                exit_quote_received: proceeds,
+                network_fees_lamports: entry_network + exit_network,
+                tips_lamports: entry_tip + exit_tip,
                 entry_slot: entry.entry_slot,
                 exit_slot: slot,
             });
+            self.next_trade_id += 1;
+            entry.remaining_tokens -= matched;
+            entry.entry_quote_debited -= entry_cost;
+            entry.entry_network_fee -= entry_network;
+            entry.entry_tip -= entry_tip;
+            if entry.remaining_tokens == 0 {
+                self.open_entries.remove(idx);
+            }
+            cost_share += entry_cost;
+            distributed_proceeds += proceeds;
+            distributed_network += exit_network;
+            distributed_tip += exit_tip;
+            unmatched -= matched;
         }
+
+        // Align position cost basis and broker realized P&L with FIFO lots.
+        let pos = self.positions.get_mut(&mint).expect("checked above");
+        pos.quantity -= tokens;
+        pos.cost_basis.0 = pos.cost_basis.0.saturating_sub(cost_share);
+        self.realized_pnl += net as i128 - cost_share as i128;
 
         if let Some(o) = self.orders.iter_mut().find(|o| o.id == order_id) {
             o.status = OrderStatus::Filled;

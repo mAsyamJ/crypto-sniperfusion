@@ -21,3 +21,14 @@ jobs:
         run: python3 -m unittest discover -s harness/tests -v
       - name: Synthetic evaluation smoke
         run: python3 harness/scripts/evaluate_paper.py harness/fixtures/example_paper_trades.jsonl
+      - name: Offline research syntax validation
+        run: python3 -m compileall -q harness
+      - name: Research lifecycle fixture schema check
+        run: python3 harness/research_batch.py validate --events harness/fixtures/research/synthetic_lifecycle.jsonl
+      - name: Ten strategy surrogate CI smoke (no network/signing)
+        env:
+          LIVE_TRADING_ENABLED: "false"
+        run: |
+          python3 harness/research_batch.py batch --events harness/fixtures/research/synthetic_lifecycle.jsonl --out /tmp/snf-synthetic-batch-ci.json
+          python3 harness/research_batch.py diagnose --report /tmp/snf-synthetic-batch-ci.json
+          python3 -c 'import json; x=json.load(open("/tmp/snf-synthetic-batch-ci.json")); assert x["promotable"] is False and len(x["results"]) == 11'

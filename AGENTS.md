@@ -35,3 +35,10 @@ Failure discipline: a failing gate blocks the milestone; root-cause, fix, re-run
 ## Current milestone protocol
 
 M0 → M9 per amended sequence (`AGENT_MASTER_PROMPT.md` §8 as amended). A milestone advances only when its gate in `docs/TEST_PLAN.md` passes for real. First vertical slice: complete Pump.fun/PumpSwap event → screening → simulated entry → position → simulated exit lifecycle, offline, fixture-reproducible.
+
+
+## Research-specific agent skills and evidence routing (2026-11-03)
+
+Use repository-local Agent Skills in `.agents/skills/*/SKILL.md` based on the task: `pump-protocol-forensics`, `memecoin-lifecycle-research`, `sniper-microstructure`, `sniper-quant-research`, `sniper-security-redteam`, `solana-execution-reliability`, `research-harness-conductor`, and `independent-strategy-critic`. These instructions are **playbooks**, not live capabilities.
+
+New research flow: `harness/docs/RESEARCH_LOOP_RUNBOOK.md`. V0 `harness/research_batch.py` is a strictly offline **synthetic surrogate** and its outputs are permanently `promotable=false`. Do not feed them to the H4 `promote` command, label them as chain-execution evidence or use them to claim profitability. Only verified real-program/fork and real shadow sources may contribute to their respective gates. Candidate generators and independent critics must be separate roles. No AI process can access funded keys, submit transactions or change live strategy configurations.
