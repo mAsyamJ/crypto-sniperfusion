@@ -59,12 +59,16 @@ enum Command {
     /// Read-only cluster RPC probe: resolves the endpoint (operator env
     /// override SNF_{MAINNET,DEVNET,TESTNET}_RPC_URL -> pinned public
     /// cluster URL), verifies cluster identity by genesis hash, and reports
-    /// version/slot/epoch. No signer is loaded; this cannot broadcast.
+    /// version/slot/epoch. Optionally reads one address's balance
+    /// (--address). No signer is loaded; this cannot broadcast.
     RpcProbe {
         #[arg(long, value_enum)]
         cluster: ClusterArg,
         #[arg(long, default_value_t = 15)]
         timeout_secs: u64,
+        /// Optional base58 address whose balance is read (watch-only).
+        #[arg(long, value_name = "PUBKEY")]
+        address: Option<String>,
     },
     /// Live trading. Requires a `live`-feature build plus four runtime gates.
     Live {
@@ -121,7 +125,8 @@ fn main() -> ExitCode {
         Command::RpcProbe {
             cluster,
             timeout_secs,
-        } => run_rpc_probe(cluster.into(), timeout_secs),
+            address,
+        } => run_rpc_probe(cluster.into(), timeout_secs, address.as_deref()),
         Command::Live {
             config,
             kill_switch_path,
@@ -143,17 +148,23 @@ fn main() -> ExitCode {
 
 /// Read-only cluster probe (INFRA-2): resolve endpoint (operator env ->
 /// pinned public), verify cluster identity by genesis, print JSON report.
-fn run_rpc_probe(cluster: Cluster, timeout_secs: u64) -> Result<String, String> {
+/// An optional watch address adds one read-only getBalance call.
+fn run_rpc_probe(
+    cluster: Cluster,
+    timeout_secs: u64,
+    address: Option<&str>,
+) -> Result<String, String> {
     let endpoint =
         resolve_endpoint(cluster, |var| std::env::var(var).ok()).map_err(|e| e.to_string())?;
     tracing::info!(
         cluster = %cluster,
         source = ?endpoint.source,
         url = %redact_url(&endpoint.url),
+        watch_address = address,
         "probing cluster endpoint (read-only)"
     );
-    let report =
-        probe_endpoint(&endpoint, Duration::from_secs(timeout_secs)).map_err(|e| e.to_string())?;
+    let report = probe_endpoint(&endpoint, Duration::from_secs(timeout_secs), address)
+        .map_err(|e| e.to_string())?;
     serde_json::to_string_pretty(&report).map_err(|e| e.to_string())
 }
 

@@ -114,9 +114,13 @@ fn cluster_from_str_round_trips() {
 fn probe_cluster_verifies_genesis_against_mock_rpc() {
     // happy path: mock serves the devnet genesis -> verified report
     let (url, handle) = spawn_mock_rpc(Some(Cluster::Devnet.expected_genesis()), 4);
-    let report =
-        sniper_runtime::rpc_probe::probe_cluster(&url, Cluster::Devnet, Duration::from_secs(5))
-            .expect("probe succeeds against mock");
+    let report = sniper_runtime::rpc_probe::probe_cluster(
+        &url,
+        Cluster::Devnet,
+        Duration::from_secs(5),
+        None,
+    )
+    .expect("probe succeeds against mock");
     assert!(report.genesis_verified);
     assert_eq!(report.genesis_hash, Cluster::Devnet.expected_genesis());
     assert_eq!(report.solana_core_version, "4.4.0");
@@ -131,11 +135,45 @@ fn probe_cluster_verifies_genesis_against_mock_rpc() {
     // hostile path: endpoint answers with mainnet's genesis -> hard failure
     // (the probe stops after the first call, so the mock expects exactly 1)
     let (url, handle) = spawn_mock_rpc(Some(Cluster::MainnetBeta.expected_genesis()), 1);
-    let err =
-        sniper_runtime::rpc_probe::probe_cluster(&url, Cluster::Devnet, Duration::from_secs(5))
-            .expect_err("genesis mismatch must fail");
+    let err = sniper_runtime::rpc_probe::probe_cluster(
+        &url,
+        Cluster::Devnet,
+        Duration::from_secs(5),
+        None,
+    )
+    .expect_err("genesis mismatch must fail");
     assert!(matches!(err, ProbeError::GenesisMismatch { .. }));
     handle.join().expect("mock server thread");
+
+    // watch-address path: a 5th read-only call (getBalance) lands in the report
+    let (url, handle) = spawn_mock_rpc(Some(Cluster::Devnet.expected_genesis()), 5);
+    let report = sniper_runtime::rpc_probe::probe_cluster(
+        &url,
+        Cluster::Devnet,
+        Duration::from_secs(5),
+        Some("32qjUtSaDQy7t8AseCg4QGzu7wLFVV3uGBFcpXcsrYTM"),
+    )
+    .expect("probe with watch address succeeds");
+    assert_eq!(
+        report.watch_address.as_deref(),
+        Some("32qjUtSaDQy7t8AseCg4QGzu7wLFVV3uGBFcpXcsrYTM")
+    );
+    assert_eq!(report.watch_balance_lamports, Some(998_995_000));
+    handle.join().expect("mock server thread");
+}
+
+#[test]
+fn invalid_watch_address_fails_before_any_network_call() {
+    // unreachable endpoint: if address parsing did not fail first, the test
+    // would still fail fast (connection refused) with the WRONG error kind
+    let err = sniper_runtime::rpc_probe::probe_cluster(
+        "http://127.0.0.1:1",
+        Cluster::MainnetBeta,
+        Duration::from_secs(2),
+        Some("not-a-base58-pubkey!!"),
+    )
+    .expect_err("invalid watch address must be rejected");
+    assert!(matches!(err, ProbeError::InvalidAddress(_)));
 }
 
 /// Spawns a single-threaded mock JSON-RPC server answering the read-only
@@ -150,9 +188,15 @@ fn spawn_mock_rpc(
     let listener = TcpListener::bind("127.0.0.1:0").expect("bind mock rpc");
     let addr = listener.local_addr().expect("mock addr");
     let handle = thread::spawn(move || {
-        for method in ["getGenesisHash", "getVersion", "getSlot", "getEpochInfo"]
-            .into_iter()
-            .take(expected_calls)
+        for method in [
+            "getGenesisHash",
+            "getVersion",
+            "getSlot",
+            "getEpochInfo",
+            "getBalance",
+        ]
+        .into_iter()
+        .take(expected_calls)
         {
             let (mut sock, _) = listener.accept().expect("mock accept");
             let mut buf = [0u8; 8192];
@@ -171,6 +215,9 @@ fn spawn_mock_rpc(
                     r#"{"jsonrpc":"2.0","result":{"solana-core":"4.4.0","feature-set":3722100051},"id":1}"#.to_string()
                 }
                 "getSlot" => r#"{"jsonrpc":"2.0","result":518298547,"id":1}"#.to_string(),
+                "getBalance" => {
+                    r#"{"jsonrpc":"2.0","result":{"context":{"slot":518298560},"value":998995000},"id":1}"#.to_string()
+                }
                 _ => r#"{"jsonrpc":"2.0","result":{"epoch":1199,"absoluteSlot":518298551,"blockHeight":505461001,"slotsInEpoch":432000,"slotIndex":1,"transactionCount":null},"id":1}"#.to_string(),
             };
             let resp = format!(
