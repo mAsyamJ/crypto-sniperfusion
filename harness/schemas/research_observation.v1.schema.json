@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mAsyamJ/crypto-sniperfusion/harness/schemas/research_observation.v1.schema.json",
+  "title": "SniperFusion synthetic research observation v1",
+  "description": "A strict UNCALIBRATED surrogate tick; not canonical Pump.fun real-program event. Real chain observations require a distinct versioned schema, program+IDL hashes and independent provenance.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "mint",
+    "slot",
+    "chain_at_ms",
+    "observed_at_ms",
+    "feature_available_at_ms",
+    "phase",
+    "safety",
+    "coverage_ok",
+    "price_lamports_per_token",
+    "exit_liquidity_lamports",
+    "net_flow_lamports",
+    "unique_buyers",
+    "creator_sell_lamports",
+    "curve_progress_bps",
+    "fee_bps"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mint": {
+      "type": "string",
+      "minLength": 1
+    },
+    "slot": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "chain_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "observed_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "feature_available_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "phase": {
+      "enum": [
+        "CREATED",
+        "EARLY_CURVE",
+        "ACTIVE_CURVE",
+        "NEAR_COMPLETION",
+        "CURVE_COMPLETED",
+        "MIGRATION_PENDING",
+        "PUMPSWAP_OPEN",
+        "POST_MIGRATION",
+        "DECAYING",
+        "INACTIVE"
+      ]
+    },
+    "safety": {
+      "enum": [
+        "ELIGIBLE",
+        "WATCH",
+        "BLOCK"
+      ]
+    },
+    "coverage_ok": {
+      "type": "boolean"
+    },
+    "price_lamports_per_token": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "exit_liquidity_lamports": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "net_flow_lamports": {
+      "type": "integer"
+    },
+    "unique_buyers": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "creator_sell_lamports": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "curve_progress_bps": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10000
+    },
+    "fee_bps": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9999
+    }
+  }
+}
