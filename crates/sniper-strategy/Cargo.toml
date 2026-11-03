@@ -12,6 +12,10 @@ license.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+# Reserve math reuse only (curve/amm constant-product, effective-quote
+# reserves, fee application) — the same math the protocol builders and
+# fork tests use. No network, clock, or signing surface enters via this dep.
+sniper-protocols.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

@@ -2,3 +2,4 @@
 //! simulated portfolios; they never call strategies directly.
 
 pub mod legacy;
+pub mod protocol;

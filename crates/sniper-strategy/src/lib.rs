@@ -14,6 +14,7 @@
 
 pub mod engine;
 pub mod exit;
+pub mod fees;
 pub mod observation;
 pub mod policies;
 
