@@ -21,3 +21,6 @@ __pycache__/
 # pinned local tool binaries (Surfpool etc.) — never commit executables
 /harness/bin/
 harness/runs/
+
+# Dedicated Devnet test wallet; NEVER commit any signer files
+/harness/devnet-keys/
