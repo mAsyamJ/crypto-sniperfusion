@@ -3678,6 +3678,7 @@ dependencies = [
  "sniper-core",
  "sniper-protocols",
  "sniper-runtime",
+ "solana-client",
  "solana-sdk",
  "tempfile",
  "thiserror 2.0.21",

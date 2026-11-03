@@ -64,7 +64,7 @@
 | `cargo clippy --all-targets --all-features -- -D warnings` | **PASSED** |
 | `cargo test` (workspace) | **PASSED** — 179 tests, 0 failed |
 | `cargo test --all-features` | **PASSED** — 179 tests, 0 failed |
-| Pre-commit secret guard (staged diff vs key/URL patterns) | **PASSED** (0 hits) |
+| Pre-commit secret guard (staged diff vs key/URL patterns) | **PASSED** after amendment — see incident record below |
 
 Engineering-loop honesty note: the first RED run failed to compile (module absent), then two
 real defects were found and fixed before green — (1) a mock-fixture wire-format bug
@@ -102,3 +102,40 @@ count instead).
 ## Open defects
 
 - None in the delivered scope. Testnet faucet funding remains operator-manual (see above).
+
+## Amendment record — secret-guard incident (honest log)
+
+The first commit object of this work (`070fa5e`, superseded) accidentally embedded the
+operator's REAL Infura API key as the input literal in the `redact_url` test fixture. The
+pre-commit guard ran but was wired into a non-blocking command chain, so it reported the hit
+AFTER the commit had already been created. Because the commit was local-only (never pushed),
+it was fixed by:
+
+1. replacing the fixture key with an all-zeros dummy (`0000…`) and re-running the test (6/6 green);
+2. `git commit --amend` → `2148c38` (amendment noted in the commit message);
+3. `git reflog expire --expire=now --all && git gc --prune=now` to purge the superseded object;
+4. verification: `git log --all -S'<key>'` = 0 commits, `git show HEAD | grep <key>` = 0 hits.
+
+The key never left this machine via git (no push occurred). Note the key was already exposed
+in plaintext chat by the operator (INFRA-1 note) — rotation is still the recommended remedy.
+Process fix adopted: the secret guard now greps ADDED lines only and ABORTS the commit chain
+on any hit (the amend run used it and passed with 0).
+
+## Concurrent-change note (2026-11-04)
+
+Mid-session, local `main` advanced from `bbef6fa` (INFRA-1) to `30a8453` — a local merge of
+origin/main PR #7 ("H5-H8 mission director + agent orchestration", `codex/devnet-pilot-
+research-loop-20261104`). That work adds docs/mission tooling only; the Rust workspace member
+set is unchanged (4 crates). All four gates were RE-RUN on the final merged tree (`2148c38`
+base) and are green: clippy ×2 (exit 0), tests ×2 (179 passed / 0 failed both feature sets),
+`cargo fmt --check` clean. One leftover worktree item is not this session's to touch:
+uncommitted `Cargo.lock` sync (`+ "solana-client"` under sniper-runtime — a byproduct of this
+work's lock refresh, included in the follow-up commit) and two untracked files
+(`deep-research-report (3).md` + `:Zone.Identifier`) belonging to the parallel session.
+
+## Files changed (final)
+
+- `crates/sniper-runtime/src/rpc_probe.rs` (new), `src/lib.rs`, `tests/rpc_probe.rs` (new)
+- `crates/sniper-app/src/main.rs` (`rpc-probe` subcommand + helper)
+- `Cargo.lock` (lock sync: solana-client listed under sniper-runtime)
+- `docs/evidence/INFRA-2-rpc-integration.md`, `docs/PROJECT_STATUS.md`
