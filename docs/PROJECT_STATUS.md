@@ -86,3 +86,10 @@ PDA module (doc-constants verified), exact integer math (curve constant-product,
   and never enables live trading. Tests: 167/167 both feature sets.
 - **H3**: NOT STARTED (needs ≥7 days read-only observation; the harness
   `shadow` command refuses to fabricate it).
+
+
+## Research Harness V0 implementation branch — 2026-11-03
+
+Branch `codex/research-harness-agent-skills-20261103` (requires PR review and CI confirmation): fixes identified P0 replay priority reordering and global-mint trade attribution in the paper broker, adds regression tests, a strict offline 11-policy **synthetic surrogate** research batch CLI, immutable-output rules, eight repository-local Solana/quant/security/critic skills, and an operational runbook. See `harness/docs/RESEARCH_LOOP_RUNBOOK.md` for exact scope and commands.
+
+**Remaining gates (NOT COMPLETE):** genuine all-launch historical dataset, on-chain point-in-time feature reconstruction, shared-capital Rust backtester, independent full-portfolio economic reconciler, actual latency/fee calibration, statistical holdouts, automated AI orchestration, complete fork protocol matrix, and >=7-day read-only shadow. The V0 surrogate has `promotable=false` and cannot activate mainnet trading. Do not claim a positive strategy edge from it.
