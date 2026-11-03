@@ -47,3 +47,19 @@ Do not overwrite root docs/, scripts/ or fixtures/. The agent should implement p
 
 Source: https://github.com/mAsyamJ/crypto-sniperfusion
 Surfpool CLI: https://solana.com/docs/tools/surfpool/toolchain/cli
+
+
+## Research loop V0 (2026-11-03)
+
+The [operational runbook](docs/RESEARCH_LOOP_RUNBOOK.md), [deep research review](docs/DEEP_RESEARCH_IMPLEMENTATION_REVIEW.md) and eight `../.agents/skills/*/SKILL.md` skills provide a safe multi-agent research workflow.
+
+To run **synthetic offline** S00 no-trade + 10 proposed entry policies:
+
+```bash
+python3 -m unittest discover -s harness/tests -v
+python3 harness/research_batch.py validate --events harness/fixtures/research/synthetic_lifecycle.jsonl
+python3 harness/research_batch.py batch --events harness/fixtures/research/synthetic_lifecycle.jsonl --out harness/runs/local-demo.json
+python3 harness/research_batch.py diagnose --report harness/runs/local-demo.json
+```
+
+The script is not a calibrated Solana paper broker, historical market replay, execution-quality simulator, or source of profitable strategy evidence. It cannot sign or broadcast and refuses `LIVE_TRADING_ENABLED`. Existing H4 `snf-harness` controls remain the authority for future evidence gates; its `shadow` still honestly returns NOT_STARTED.
