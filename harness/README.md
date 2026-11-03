@@ -71,3 +71,7 @@ Read `docs/DEVNET_EXECUTION_PILOT.md` and `harness/docs/RESEARCH_CYCLE_V1.md` fr
 Run `python3 harness/research_cycle.py --events harness/fixtures/research/synthetic_lifecycle.jsonl --out harness/runs/three-rounds.json --cycles 3` to test a bounded synthetic strategy iteration. All receipts are non-promotable and do not establish trading profit.
 
 Run `python3 harness/cluster_probe.py --cluster devnet` for a read-only network/program check. The Rust `devnet-pump-pilot` binary offers optional, narrowly bounded Devnet program mechanics tests against a provided eligible Devnet mint. No Mainnet transactions or autonomous sniping are enabled. Keep test signer files private and outside git.
+
+## H5–H8 agent mission coordinator
+
+Read `harness/docs/MASTER_AGENT_MISSION_H5_H8.md` for the complete agent prompt and `harness/docs/H5_H8_GOAL_PLAN.md` for the milestone gates. From repo root run `python3 harness/agent_mission.py plan`, then `python3 harness/agent_mission.py run --events harness/fixtures/research/synthetic_lifecycle.jsonl --cycles 3 --out harness/runs/mission-001.json`. The controller uses synthetic data and never signs or broadcasts. It produces immutable, non-promotable evidence receipts.
