@@ -52,3 +52,7 @@ New research flow: `harness/docs/RESEARCH_LOOP_RUNBOOK.md`. V0 `harness/research
 - \`harness/research_cycle.py\` uses **synthetic** inputs only, finite trial counts, preregistered parameter changes, adverse execution scenarios and a single sealed toy check. All receipts \`promotable=false\`. It is NOT a production backtester, automated LLM agent or a credible alpha claim.
 - Skills: \`.agents/skills/devnet-protocol-pilot/SKILL.md\` and \`.agents/skills/strategy-experiment-orchestrator/SKILL.md\`.
 - No automated signer connections, live snipes, paid RPC service activation or unbounded self-improvement loops. Real Devnet trade signature can only be claimed after operator executes and reconciles it.
+
+## H5–H8 Master Mission (2026-11-04)
+
+For new coding agents: read `harness/docs/MASTER_AGENT_MISSION_H5_H8.md`, `harness/docs/H5_H8_GOAL_PLAN.md` and `.agents/skills/sniperfusion-mission-director/SKILL.md` before beginning any research/Devnet work. The local `python3 harness/agent_mission.py plan` and `python3 harness/agent_mission.py run --events harness/fixtures/research/synthetic_lifecycle.jsonl --cycles 3 --out harness/runs/mission-001.json` are deliberately **offline, synthetic, and not promotable**. Do not confuse an unverified gate with a PASS. Never give the offline agent runner a funded key or a Devnet pilot signer, and never call `devnet-pump-pilot --submit` automatically. A separate operator explicitly approves at most one bounded Devnet protocol test, not mainnet sniping.
