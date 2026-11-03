@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from agent_mission import execute_research, plan, write_once
+from agent_mission import execute_research, plan, python_gate, write_once
 from research_batch import EVIDENCE_CLASS
 
 FIXTURE = ROOT / "fixtures/research/synthetic_lifecycle.jsonl"
@@ -61,6 +61,27 @@ class AgentMissionTests(unittest.TestCase):
         with patch.dict(os.environ, {"LIVE_TRADING_ENABLED": "true"}):
             with self.assertRaisesRegex(ValueError, "offline research"):
                 execute_research(FIXTURE, 1, lambda: {"status": "PASS"})
+
+    def test_child_test_runner_does_not_inherit_agent_keys(self):
+        fake = type("Completed", (), {"returncode": 0, "stderr": ""})()
+        with patch.dict(os.environ, {
+            "SNF_DEVNET_RPC": "https://secret.example/rpc",
+            "OPENAI_API_KEY": "private-key-placeholder",
+            "PRIVATE_KEY": "private-key-placeholder",
+        }):
+            with patch("agent_mission.subprocess.run", return_value=fake) as proc:
+                receipt = python_gate()
+                kwargs = proc.call_args.kwargs
+        self.assertEqual(receipt["status"], "PASS")
+        self.assertEqual(kwargs["env"]["LIVE_TRADING_ENABLED"], "false")
+        self.assertNotIn("SNF_DEVNET_RPC", kwargs["env"])
+        self.assertNotIn("OPENAI_API_KEY", kwargs["env"])
+        self.assertNotIn("PRIVATE_KEY", kwargs["env"])
+        self.assertEqual(kwargs["timeout"], 120)
+
+    def test_unknown_gate_result_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "invalid status"):
+            execute_research(FIXTURE, 1, lambda: {"status": "SKIPPED"})
 
     def test_receipts_are_write_once_and_unchanged(self):
         with tempfile.TemporaryDirectory() as root:
