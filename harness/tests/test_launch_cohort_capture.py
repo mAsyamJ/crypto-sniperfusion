@@ -348,6 +348,25 @@ class CaptureFlow(unittest.TestCase):
         kinds = [g["kind"] for g in report["gaps"]]
         self.assertTrue(any(k.startswith("MissingMetadata") for k in kinds))
 
+    def test_recovered_transaction_creates_are_flagged_not_fabricated(self):
+        # Provider cannot serve blocks (Infura-style getBlock refusal) but
+        # getTransaction works: creates recovered from logs carry
+        # block_evidence=False and transaction_index None; coverage stays
+        # INCOMPLETE and a NoBlockEvidence gap remains.
+        tx = make_create_tx("SigRecover")
+        recovered = {"slot": 100, "meta": tx["meta"], "transaction": tx["transaction"]}
+        rpc = FakeRpc(blocks=[], sig_pages=[[{"signature": "SigRecover", "slot": 100, "err": None}]])
+        rpc.get_transaction = lambda signature: recovered
+        report = self.capture(rpc, from_slot=100, to_slot=100)
+        self.assertEqual(len(report["creates"]), 1)
+        create = report["creates"][0]
+        self.assertFalse(create["block_evidence"])
+        self.assertIsNone(create["transaction_index"])
+        self.assertEqual(create["signature"], "SigRecover")
+        self.assertEqual(report["coverage_state"], "INCOMPLETE")
+        kinds = [g["kind"] for g in report["gaps"]]
+        self.assertIn("NoBlockEvidence:SigRecover", kinds)
+
     def test_window_past_tip_is_right_censored(self):
         rpc = FakeRpc(blocks=[make_block(100, self.txs_100)], tip=100)
         report = self.capture(rpc, from_slot=100, to_slot=150)
@@ -368,6 +387,17 @@ class CaptureFlow(unittest.TestCase):
         rpc = FakeRpc()
         self.assertRaises(ValueError, self.capture, rpc, from_slot=200, to_slot=100)
         self.assertRaises(ValueError, self.capture, rpc, from_slot=0, to_slot=100000)
+
+    def test_recent_slots_window_is_tip_relative(self):
+        rpc = FakeRpc(
+            blocks=[make_block(998, []), make_block(999, [])],
+            sig_pages=[[]],
+            tip=999,
+        )
+        report = lcc.capture_recent_slots(rpc, 1, self.dir, sleep=lambda s: None)
+        self.assertEqual(report["manifest"]["window"]["from_slot"], 998)
+        self.assertEqual(report["manifest"]["window"]["to_slot"], 999)
+        self.assertEqual(report["blocks_fetched"], 2)
 
 
 class Outputs(unittest.TestCase):

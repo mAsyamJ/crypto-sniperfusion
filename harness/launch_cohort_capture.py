@@ -310,16 +310,9 @@ def _validate_window(from_slot, to_slot):
         )
 
 
-def capture(rpc, from_slot, to_slot, out_dir, *, max_pages=20, retries=3,
-            sleep=time.sleep, sleep_base=0.5):
-    """Run the bounded capture. Returns the report dict; writes raw + manifest."""
-    require_safe_env()
-    _validate_window(from_slot, to_slot)
-
-    genesis = rpc.get_genesis_hash()
-    if genesis != MAINNET_GENESIS:
-        raise WrongCluster(genesis, MAINNET_GENESIS)
-
+def _capture_window(rpc, genesis, from_slot, to_slot, out_dir, *, max_pages,
+                    retries, sleep, sleep_base):
+    """Collection core for an already-validated window (identity checked)."""
     tip = rpc.get_slot()
     right_censored = None
     collect_to = to_slot
@@ -406,10 +399,26 @@ def capture(rpc, from_slot, to_slot, out_dir, *, max_pages=20, retries=3,
         if tx is None:
             gaps.append({"kind": f"MissingMetadata:{sig}",
                          "evidence": "getTransaction returned null (pruned or dropped)"})
-        else:
-            gaps.append({"kind": f"MissingMetadata:{sig}",
-                         "evidence": f"transaction present at slot {tx.get('slot')} "
-                                     "but absent from fetched block evidence"})
+            continue
+        # Transaction recovered WITHOUT block evidence: decode any creates
+        # from its logs, flagged block_evidence=False and transaction_index
+        # unknown (never fabricated). The interval still cannot be proven
+        # complete without block coverage, so a NoBlockEvidence gap remains.
+        gaps.append({"kind": f"NoBlockEvidence:{sig}",
+                     "evidence": f"transaction recovered at slot {tx.get('slot')} "
+                                 "without block evidence; interval completeness unprovable"})
+        meta = tx.get("meta") or {}
+        if meta.get("err") is not None:
+            continue
+        for event in extract_creates_from_logs(meta.get("logMessages") or [], PUMP_PROGRAM_ID):
+            record = dict(event)
+            record.update({
+                "signature": sig,
+                "slot": tx.get("slot") or 0,
+                "transaction_index": None,
+                "block_evidence": False,
+            })
+            creates.append(record)
 
     if not verified_blocks and not creates and not in_window_sigs:
         coverage_state = "UNKNOWN"
@@ -422,7 +431,10 @@ def capture(rpc, from_slot, to_slot, out_dir, *, max_pages=20, retries=3,
     else:
         coverage_state = "INCOMPLETE"
 
-    creates.sort(key=lambda c: (c["slot"], c["transaction_index"], c["event_ordinal"]))
+    creates.sort(key=lambda c: (c["slot"],
+                                c["transaction_index"]
+                                if c["transaction_index"] is not None else 1 << 62,
+                                c["event_ordinal"]))
 
     stamp = time.strftime("%Y%m%dT%H%M%S", time.gmtime()) + f"-{os.getpid()}"
     raw_path = Path(out_dir) / f"raw_creates-{stamp}.jsonl"
@@ -456,7 +468,7 @@ def capture(rpc, from_slot, to_slot, out_dir, *, max_pages=20, retries=3,
             "proves a complete creation cohort"
         ),
     }
-    manifest_path = Path(out_dir) / f"manifest-{digest[:16]}.json"
+    manifest_path = Path(out_dir) / f"manifest-{stamp}-{digest[:16]}.json"
     write_once(manifest_path, json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
     return {
@@ -475,18 +487,61 @@ def capture(rpc, from_slot, to_slot, out_dir, *, max_pages=20, retries=3,
     }
 
 
+def _checked_identity(rpc):
+    require_safe_env()
+    genesis = rpc.get_genesis_hash()
+    if genesis != MAINNET_GENESIS:
+        raise WrongCluster(genesis, MAINNET_GENESIS)
+    return genesis
+
+
+def capture(rpc, from_slot, to_slot, out_dir, *, max_pages=20, retries=3,
+            sleep=time.sleep, sleep_base=0.5):
+    """Explicit-window capture: the caller names the slot interval."""
+    genesis = _checked_identity(rpc)
+    _validate_window(from_slot, to_slot)
+    return _capture_window(rpc, genesis, from_slot, to_slot, out_dir,
+                           max_pages=max_pages, retries=retries,
+                           sleep=sleep, sleep_base=sleep_base)
+
+
+def capture_recent_slots(rpc, lookback_slots, out_dir, *, max_pages=20, retries=3,
+                         sleep=time.sleep, sleep_base=0.5):
+    """Tip-relative capture: window = [tip - lookback, tip] with the tip
+    fetched immediately before the sweep, avoiding the stale-window race
+    when high program throughput makes a pre-computed window drift out of
+    the signature feed's first pages."""
+    if lookback_slots < 1 or lookback_slots > MAX_WINDOW_SLOTS - 1:
+        raise ValueError(f"lookback_slots must be in 1..{MAX_WINDOW_SLOTS - 1}")
+    genesis = _checked_identity(rpc)
+    tip = rpc.get_slot()
+    from_slot = tip - lookback_slots
+    return _capture_window(rpc, genesis, from_slot, tip, out_dir,
+                           max_pages=max_pages, retries=retries,
+                           sleep=sleep, sleep_base=sleep_base)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", default=os.environ.get("SNF_MAINNET_RPC_URL", DEFAULT_PUBLIC_RPC))
-    parser.add_argument("--from-slot", type=int, required=True)
-    parser.add_argument("--to-slot", type=int, required=True)
+    window = parser.add_mutually_exclusive_group(required=True)
+    window.add_argument("--from-slot", type=int, help="explicit window start (with --to-slot)")
+    window.add_argument("--recent-slots", type=int,
+                        help="tip-relative window [tip - N, tip], race-free")
+    parser.add_argument("--to-slot", type=int)
     parser.add_argument("--out-dir", default="harness/runs/launch-cohort")
     parser.add_argument("--max-pages", type=int, default=20)
     parser.add_argument("--retries", type=int, default=3)
     args = parser.parse_args(argv)
     rpc = JsonRpc(url=args.url)
-    report = capture(rpc, args.from_slot, args.to_slot, args.out_dir,
-                     max_pages=args.max_pages, retries=args.retries)
+    if args.recent_slots is not None:
+        report = capture_recent_slots(rpc, args.recent_slots, args.out_dir,
+                                      max_pages=args.max_pages, retries=args.retries)
+    else:
+        if args.to_slot is None:
+            parser.error("--from-slot requires --to-slot")
+        report = capture(rpc, args.from_slot, args.to_slot, args.out_dir,
+                         max_pages=args.max_pages, retries=args.retries)
     summary = {k: report[k] for k in ("coverage_state", "blocks_fetched", "pages_fetched",
                                       "raw_path", "manifest_path", "nonpromotable")}
     summary["creates"] = len(report["creates"])
