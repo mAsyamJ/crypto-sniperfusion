@@ -7,11 +7,12 @@
 //! identity is then verified against pinned genesis hashes so a mis-pointed
 //! endpoint (e.g. devnet URL answering with mainnet's genesis) fails loudly.
 //!
-//! This module is read-only by construction: it performs only the four
-//! getter calls (`getGenesisHash`, `getVersion`, `getSlot`, `getEpochInfo`),
-//! imports no signer or keypair type, and has no send path. Printable URLs
-//! are reduced to scheme + host (`redact_url`) because provider credentials
-//! commonly live in the URL path (e.g. Infura `/v3/<key>`).
+//! This module is read-only by construction: it performs only getter calls
+//! (`getGenesisHash`, `getVersion`, `getSlot`, `getEpochInfo`, and — when a
+//! watch address is supplied — `getBalance`), imports no signer or keypair
+//! type, and has no send path. Printable URLs are reduced to scheme + host
+//! (`redact_url`) because provider credentials commonly live in the URL path
+//! (e.g. Infura `/v3/<key>`).
 
 use std::fmt;
 use std::str::FromStr;
@@ -19,6 +20,7 @@ use std::time::Duration;
 
 use solana_client::client_error::ClientError;
 use solana_client::rpc_client::RpcClient;
+use solana_sdk::pubkey::Pubkey;
 
 /// Env var carrying the operator's private read-only mainnet-beta RPC URL.
 pub const ENV_MAINNET_RPC_URL: &str = "SNF_MAINNET_RPC_URL";
@@ -129,6 +131,8 @@ pub enum ProbeError {
     },
     #[error("read-only RPC call failed: {0}")]
     Rpc(String),
+    #[error("invalid watch address {0:?}: expected a base58 pubkey")]
+    InvalidAddress(String),
     #[error("unknown cluster {0:?} (expected mainnet|devnet|testnet)")]
     UnknownCluster(String),
 }
@@ -226,16 +230,32 @@ pub struct ClusterProbeReport {
     pub slot: u64,
     pub epoch: u64,
     pub block_height: u64,
+    /// Optional read-only watched address (e.g. an operator-held funded
+    /// wallet whose BALANCE is queried — never signed).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub watch_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub watch_balance_lamports: Option<u64>,
 }
 
-/// Runs the four read-only getter calls against `url` and verifies cluster
-/// identity. Any transport error is sanitized so the raw URL (which may
-/// carry a provider key in its path) cannot leak into error strings.
+/// Runs the read-only getter calls against `url` and verifies cluster
+/// identity. When `watch_address` is supplied its balance is fetched via a
+/// final `getBalance` call. Any transport error is sanitized so the raw URL
+/// (which may carry a provider key in its path) cannot leak into error
+/// strings.
 pub fn probe_cluster(
     url: &str,
     cluster: Cluster,
     timeout: Duration,
+    watch_address: Option<&str>,
 ) -> Result<ClusterProbeReport, ProbeError> {
+    let watch = match watch_address {
+        Some(addr) => Some(
+            Pubkey::from_str(addr.trim())
+                .map_err(|_| ProbeError::InvalidAddress(addr.to_string()))?,
+        ),
+        None => None,
+    };
     let client = RpcClient::new_with_timeout(url.to_string(), timeout);
     let sanitize = |e: ClientError| ProbeError::Rpc(e.to_string().replace(url, &redact_url(url)));
 
@@ -245,6 +265,10 @@ pub fn probe_cluster(
     let version = client.get_version().map_err(sanitize)?;
     let slot = client.get_slot().map_err(sanitize)?;
     let epoch_info = client.get_epoch_info().map_err(sanitize)?;
+    let watch_balance = match watch {
+        Some(pk) => Some(client.get_balance(&pk).map_err(sanitize)?),
+        None => None,
+    };
 
     Ok(ClusterProbeReport {
         cluster,
@@ -257,6 +281,8 @@ pub fn probe_cluster(
         slot,
         epoch: epoch_info.epoch,
         block_height: epoch_info.block_height,
+        watch_address: watch.map(|pk| pk.to_string()),
+        watch_balance_lamports: watch_balance,
     })
 }
 
@@ -265,8 +291,9 @@ pub fn probe_cluster(
 pub fn probe_endpoint(
     endpoint: &ResolvedEndpoint,
     timeout: Duration,
+    watch_address: Option<&str>,
 ) -> Result<ClusterProbeReport, ProbeError> {
-    let mut report = probe_cluster(&endpoint.url, endpoint.cluster, timeout)?;
+    let mut report = probe_cluster(&endpoint.url, endpoint.cluster, timeout, watch_address)?;
     report.url_redacted = redact_url(&endpoint.url);
     report.endpoint_source = endpoint.source.clone();
     Ok(report)

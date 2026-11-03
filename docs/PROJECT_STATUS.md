@@ -17,6 +17,7 @@ Living document; update at every milestone close. Format: state, evidence pointe
 | H4 — Improvement harness CLI skeleton | **COMPLETE** (2026-11-02; H3 shadow window intentionally not started) | `docs/evidence/H4.md` |
 | INFRA — Solana disposable wallets + operator RPC validation | **COMPLETE** (2026-11-04; docs-only, no code change) | `docs/evidence/INFRA-solana-rpc-wallets.md` |
 | INFRA-2 — Operator RPCs integrated: `sniper rpc-probe` + endpoint resolution | **COMPLETE** (2026-11-04; full engineering loop, 179/179 tests ×2) | `docs/evidence/INFRA-2-rpc-integration.md` |
+| INFRA-3 — Mainnet readiness: unfunded watch wallet + `rpc-probe --address` | **COMPLETE** (2026-11-04; read-only only, 249/249 tests ×2 on merged tree) | `docs/evidence/INFRA-3-mainnet-readiness.md` |
 | M4 — Chainstack parity scope closure | PLANNED | — |
 | M5 — Token intelligence + DevFlowMonitor | PLANNED | — |
 | M6 — Multi-DEX + copy trading | PLANNED | — |
