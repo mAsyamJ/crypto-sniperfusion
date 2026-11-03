@@ -77,6 +77,7 @@ class ResearchHarnessTests(unittest.TestCase):
             e["mint"] = "SYNTHETIC_ONLY_ONE"
             if e["event_id"] != "SYN-001":
                 e["safety"] = "WATCH"
+                e["exit_liquidity_lamports"] = 0
             if e["event_id"] == "SYN-001":
                 e["exit_liquidity_lamports"] = 10_000_000
         result = simulate(events, "S01", 100_000_000, 1_000_000,
