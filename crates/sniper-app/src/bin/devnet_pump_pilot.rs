@@ -38,7 +38,10 @@ const DEFAULT_RPC: &str = "https://api.devnet.solana.com";
 const DEFAULT_KEY: &str = "harness/devnet-keys/pilot.json";
 
 #[derive(Debug, Parser)]
-#[command(name = "devnet-pump-pilot", about = "Opt-in Pump.fun V3 Devnet smoke, never mainnet")]
+#[command(
+    name = "devnet-pump-pilot",
+    about = "Opt-in Pump.fun V3 Devnet smoke, never mainnet"
+)]
 struct Args {
     /// Address of a live CURVE-TRADING SOL-paired Token-2022 mint on Devnet.
     #[arg(long)]
@@ -90,8 +93,7 @@ fn must_be_offline_mainnet() -> Result<(), String> {
     {
         return Err("pilot requires LIVE_TRADING_ENABLED=false".into());
     }
-    if std::env::var_os("SOLANA_PRIVATE_KEY").is_some()
-        || std::env::var_os("PRIVATE_KEY").is_some()
+    if std::env::var_os("SOLANA_PRIVATE_KEY").is_some() || std::env::var_os("PRIVATE_KEY").is_some()
     {
         return Err("pilot refuses private-key env variables".into());
     }
@@ -100,9 +102,10 @@ fn must_be_offline_mainnet() -> Result<(), String> {
 
 fn local_pilot_key(path: &Path) -> Result<Keypair, String> {
     // This tool owns only a dedicated location; never the normal Solana CLI key.
-    if path.components().any(|part| {
-        matches!(part, std::path::Component::ParentDir)
-    }) || !path.starts_with("harness/devnet-keys")
+    if path
+        .components()
+        .any(|part| matches!(part, std::path::Component::ParentDir))
+        || !path.starts_with("harness/devnet-keys")
     {
         return Err("pilot key path must be under harness/devnet-keys/".into());
     }
@@ -139,23 +142,34 @@ fn create_ata_idempotent(user: &Pubkey, mint: &Pubkey) -> Instruction {
     }
 }
 
-fn transaction(wallet: &Keypair, rpc: &RpcClient, ixs: Vec<Instruction>) -> Result<Transaction, String> {
+fn transaction(
+    wallet: &Keypair,
+    rpc: &RpcClient,
+    ixs: Vec<Instruction>,
+) -> Result<Transaction, String> {
     let mut all = vec![ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT)];
     all.extend(ixs);
     let msg = Message::new(&all, Some(&wallet.pubkey()));
-    let hash = rpc.get_latest_blockhash().map_err(|_| "cannot obtain fresh blockhash")?;
+    let hash = rpc
+        .get_latest_blockhash()
+        .map_err(|_| "cannot obtain fresh blockhash")?;
     Ok(Transaction::new(&[wallet], msg, hash))
 }
 
 fn token_balance(rpc: &RpcClient, ata: &Pubkey) -> Result<u64, String> {
     match rpc.get_token_account_balance(ata) {
-        Ok(b) => b.amount.parse::<u64>().map_err(|_| "invalid token balance".into()),
+        Ok(b) => b
+            .amount
+            .parse::<u64>()
+            .map_err(|_| "invalid token balance".into()),
         Err(_) => Ok(0), // ATA absent before first buy
     }
 }
 
 fn simulate(rpc: &RpcClient, tx: &Transaction) -> Result<(), String> {
-    let sim = rpc.simulate_transaction(tx).map_err(|_| "simulation RPC call failed")?;
+    let sim = rpc
+        .simulate_transaction(tx)
+        .map_err(|_| "simulation RPC call failed")?;
     if sim.value.err.is_some() {
         return Err("protocol transaction simulation failed; no trade submitted".into());
     }
@@ -190,7 +204,9 @@ fn start_journal(user: &Pubkey, mint: &Pubkey) -> Result<PathBuf, String> {
 }
 
 fn journal(path: &Path, state: &str, signature: Option<&str>) -> Result<(), String> {
-    let mut f = OpenOptions::new().append(true).open(path)
+    let mut f = OpenOptions::new()
+        .append(true)
+        .open(path)
         .map_err(|_| "cannot reopen pilot journal")?;
     writeln!(f, "{}", json!({"state": state, "signature": signature}))
         .map_err(|_| "journal append failed")?;
@@ -218,24 +234,31 @@ fn run(args: Args) -> Result<Value, String> {
     }
     let mint = Pubkey::from_str(&args.mint).map_err(|_| "invalid mint pubkey")?;
     let rpc = RpcClient::new_with_commitment(args.rpc_url, CommitmentConfig::confirmed());
-    let genesis = rpc.get_genesis_hash().map_err(|_| "cannot verify network genesis")?;
+    let genesis = rpc
+        .get_genesis_hash()
+        .map_err(|_| "cannot verify network genesis")?;
     guard(
         &genesis.to_string(),
         args.tokens,
         args.max_sol_cost_lamports,
         args.min_sell_quote_lamports,
     )?;
-    let pump = rpc.get_account(&pda::pump_program())
+    let pump = rpc
+        .get_account(&pda::pump_program())
         .map_err(|_| "Pump.fun program absent on this cluster")?;
     if !pump.executable {
         return Err("Pump.fun account is not executable".into());
     }
-    let token = rpc.get_account(&mint).map_err(|_| "devnet token mint not found")?;
+    let token = rpc
+        .get_account(&mint)
+        .map_err(|_| "devnet token mint not found")?;
     if token.owner != pda::token_2022_program() {
         return Err("pilot supports SOL-paired Token-2022 mints only".into());
     }
     let curve = pda::bonding_curve(&mint);
-    let bc = rpc.get_account(&curve).map_err(|_| "bonding curve missing")?;
+    let bc = rpc
+        .get_account(&curve)
+        .map_err(|_| "bonding curve missing")?;
     if bc.owner != pda::pump_program() {
         return Err("curve not owned by expected Pump.fun program".into());
     }
@@ -253,12 +276,17 @@ fn run(args: Args) -> Result<Value, String> {
     // Local dedicated identity is persisted before any send: failed sells can
     // be reconciled manually. Never use a user's mainnet CLI identity.
     let key = local_pilot_key(&args.pilot_keypair)?;
-    let starting_balance = rpc.get_balance(&key.pubkey())
+    let starting_balance = rpc
+        .get_balance(&key.pubkey())
         .map_err(|_| "cannot read pilot balance")?;
     if starting_balance < FUND_AIRDROP_LAMPORTS {
-        let sig = rpc.request_airdrop(&key.pubkey(), FUND_AIRDROP_LAMPORTS)
+        let sig = rpc
+            .request_airdrop(&key.pubkey(), FUND_AIRDROP_LAMPORTS)
             .map_err(|_| "devnet faucet unavailable")?;
-        if !rpc.confirm_transaction(&sig).map_err(|_| "airdrop confirmation failed")? {
+        if !rpc
+            .confirm_transaction(&sig)
+            .map_err(|_| "airdrop confirmation failed")?
+        {
             return Err("airdrop unconfirmed; no trade".into());
         }
     }
@@ -267,9 +295,12 @@ fn run(args: Args) -> Result<Value, String> {
     let before = token_balance(&rpc, &ata)?;
 
     let buy = transaction(
-        &key, &rpc,
-        vec![create_ata_idempotent(&key.pubkey(), &mint),
-             buy_v3(&context, args.tokens, args.max_sol_cost_lamports, 0, false)],
+        &key,
+        &rpc,
+        vec![
+            create_ata_idempotent(&key.pubkey(), &mint),
+            buy_v3(&context, args.tokens, args.max_sol_cost_lamports, 0, false),
+        ],
     )?;
     simulate(&rpc, &buy)?;
     let journal_path = start_journal(&key.pubkey(), &mint)?;
@@ -284,7 +315,9 @@ fn run(args: Args) -> Result<Value, String> {
         }
     };
     let after = token_balance(&rpc, &ata)?;
-    let filled = after.checked_sub(before).ok_or("token balance unexpectedly decreased")?;
+    let filled = after
+        .checked_sub(before)
+        .ok_or("token balance unexpectedly decreased")?;
     if filled == 0 {
         return Err("buy confirmation returned but no token delta; reconcile manually".into());
     }
@@ -306,7 +339,8 @@ fn run(args: Args) -> Result<Value, String> {
 
     if args.roundtrip {
         let sell = transaction(
-            &key, &rpc,
+            &key,
+            &rpc,
             vec![sell_v3(&context, filled, args.min_sell_quote_lamports, 0)],
         )?;
         if let Err(message) = simulate(&rpc, &sell) {
@@ -329,7 +363,11 @@ fn run(args: Args) -> Result<Value, String> {
             }
         }
     } else {
-        journal(&journal_path, "BUY_ONLY_OPEN_POSITION", Some(&buy_signature))?;
+        journal(
+            &journal_path,
+            "BUY_ONLY_OPEN_POSITION",
+            Some(&buy_signature),
+        )?;
     }
     Ok(receipt)
 }
