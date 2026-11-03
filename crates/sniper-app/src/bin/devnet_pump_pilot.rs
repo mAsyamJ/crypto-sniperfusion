@@ -11,6 +11,8 @@
 //! cargo run -p sniper-app --bin devnet-pump-pilot -- --mint <DEVNET_MINT>
 //! cargo run -p sniper-app --bin devnet-pump-pilot -- --mint <DEVNET_MINT> --submit --roundtrip
 
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -166,6 +168,36 @@ fn send_once(rpc: &RpcClient, tx: &Transaction) -> Result<String, String> {
         .map_err(|_| "submit/confirm uncertain: inspect chain before any retry".into())
 }
 
+/// A durable, single-run journal for any signing attempt. An existing file
+/// blocks another buy from the same dedicated pilot identity until the
+/// operator manually reconciles it; no blind resubmissions.
+fn start_journal(user: &Pubkey, mint: &Pubkey) -> Result<PathBuf, String> {
+    let dir = Path::new("harness/runs/devnet-pilot");
+    std::fs::create_dir_all(dir).map_err(|_| "cannot create pilot journal dir")?;
+    let path = dir.join(format!("{user}.jsonl"));
+    let mut f = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&path)
+        .map_err(|_| "pilot journal already exists; reconcile previous order before retry")?;
+    let line = json!({
+        "state": "BUY_INTENT_DURABLE", "cluster": "devnet",
+        "wallet": user.to_string(), "mint": mint.to_string(),
+    });
+    writeln!(f, "{line}").map_err(|_| "pilot journal write failed")?;
+    f.sync_all().map_err(|_| "pilot journal sync failed")?;
+    Ok(path)
+}
+
+fn journal(path: &Path, state: &str, signature: Option<&str>) -> Result<(), String> {
+    let mut f = OpenOptions::new().append(true).open(path)
+        .map_err(|_| "cannot reopen pilot journal")?;
+    writeln!(f, "{}", json!({"state": state, "signature": signature}))
+        .map_err(|_| "journal append failed")?;
+    f.sync_all().map_err(|_| "journal fsync failed")?;
+    Ok(())
+}
+
 fn run(args: Args) -> Result<Value, String> {
     must_be_offline_mainnet()?;
     if !args.rpc_url.starts_with("https://")
@@ -240,7 +272,17 @@ fn run(args: Args) -> Result<Value, String> {
              buy_v3(&context, args.tokens, args.max_sol_cost_lamports, 0, false)],
     )?;
     simulate(&rpc, &buy)?;
-    let buy_signature = send_once(&rpc, &buy)?;
+    let journal_path = start_journal(&key.pubkey(), &mint)?;
+    let buy_signature = match send_once(&rpc, &buy) {
+        Ok(sig) => {
+            journal(&journal_path, "BUY_CONFIRMED", Some(&sig))?;
+            sig
+        }
+        Err(message) => {
+            journal(&journal_path, "BUY_UNKNOWN_RECONCILE", None)?;
+            return Err(message);
+        }
+    };
     let after = token_balance(&rpc, &ata)?;
     let filled = after.checked_sub(before).ok_or("token balance unexpectedly decreased")?;
     if filled == 0 {
@@ -252,6 +294,7 @@ fn run(args: Args) -> Result<Value, String> {
         "mint":mint.to_string(),
         "wallet_pubkey":key.pubkey().to_string(),
         "pilot_key_path":args.pilot_keypair.to_string_lossy(),
+        "journal_path":journal_path.to_string_lossy(),
         "submitted":true,
         "buy_signature":buy_signature,
         "tokens_received":filled,
@@ -270,18 +313,23 @@ fn run(args: Args) -> Result<Value, String> {
             // Preserve evidence of the successful buy. No unverified retry.
             receipt["sell_status"] = json!("SIMULATION_REJECTED");
             receipt["sell_error"] = json!(message);
+            journal(&journal_path, "SELL_SIMULATION_REJECTED", None)?;
             return Ok(receipt);
         }
         match send_once(&rpc, &sell) {
             Ok(sig) => {
+                journal(&journal_path, "SELL_CONFIRMED", Some(&sig))?;
                 receipt["sell_signature"] = json!(sig);
                 receipt["remaining_tokens"] = json!(token_balance(&rpc, &ata)?);
             }
             Err(message) => {
+                journal(&journal_path, "SELL_UNKNOWN_RECONCILE", None)?;
                 receipt["sell_status"] = json!("SUBMISSION_UNCERTAIN");
                 receipt["sell_error"] = json!(message);
             }
         }
+    } else {
+        journal(&journal_path, "BUY_ONLY_OPEN_POSITION", Some(&buy_signature))?;
     }
     Ok(receipt)
 }
