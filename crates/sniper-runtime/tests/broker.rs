@@ -611,7 +611,7 @@ fn sell_of_second_mint_is_not_paired_with_first_mint_entry() {
         .collect();
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0]["mint"], mint_b.to_string());
-    assert_eq!(broker.position(&mint_a).unwrap().quantity > 0, true);
+    assert!(broker.position(&mint_a).unwrap().quantity > 0);
 }
 
 #[test]
