@@ -16,6 +16,7 @@ pub mod engine;
 pub mod exit;
 pub mod fees;
 pub mod observation;
+pub mod oracle;
 pub mod policies;
 
 pub use observation::{load_events, Observation, Phase, Safety, ValidationError};
