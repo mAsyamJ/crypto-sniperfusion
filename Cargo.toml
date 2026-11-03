@@ -4,6 +4,7 @@ members = [
     "crates/sniper-core",
     "crates/sniper-protocols",
     "crates/sniper-runtime",
+    "crates/sniper-strategy",
     "crates/sniper-app",
 ]
 
@@ -18,6 +19,7 @@ license = "UNLICENSED"
 sniper-core = { path = "crates/sniper-core" }
 sniper-protocols = { path = "crates/sniper-protocols" }
 sniper-runtime = { path = "crates/sniper-runtime" }
+sniper-strategy = { path = "crates/sniper-strategy" }
 # Solana generation pinned by ADR-0003 (M0 spike evidence: docs/SOLANA_COMPATIBILITY.md)
 solana-sdk = "=2.3.1"
 solana-client = "=2.3.1"

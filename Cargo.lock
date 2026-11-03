@@ -3675,9 +3675,11 @@ dependencies = [
  "clap",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
  "sniper-core",
  "sniper-protocols",
  "sniper-runtime",
+ "sniper-strategy",
  "solana-client",
  "solana-sdk",
  "tempfile",
@@ -3735,6 +3737,19 @@ dependencies = [
  "tracing",
  "yellowstone-grpc-client",
  "yellowstone-grpc-proto",
+]
+
+[[package]]
+name = "sniper-strategy"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sniper-core",
+ "sniper-protocols",
+ "solana-sdk",
+ "tempfile",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

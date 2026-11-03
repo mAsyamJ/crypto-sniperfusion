@@ -1,0 +1,351 @@
+{
+  "dataset_sha256": "ca20dd74c132cef16b13372a827156bd3860b263b2e29c15dd127b96db8c5a93",
+  "event_count": 11,
+  "evidence_class": "SYNTHETIC_SURROGATE_UNCALIBRATED",
+  "live_trading_enabled": false,
+  "mint_count": 2,
+  "model_limitations": [
+    "synthetic or externally supplied observations, not verified complete mainnet cohort",
+    "fills priced immediately at visible snapshots; no actual transaction landing model",
+    "linear token-price approximation, not the deployed Pump.fun/PumpSwap reserve math",
+    "unknown exit liquidity treated as worthless; all modeled positions are virtual",
+    "no out-of-sample evaluation, uncertainty intervals or production promotion"
+  ],
+  "parameters": {
+    "ata_rent": 1500000,
+    "cash": 100000000,
+    "max_hold_ms": 20000,
+    "slip_bps": 100,
+    "spend": 1000000,
+    "tx_cost": 10000
+  },
+  "promotable": false,
+  "results": [
+    {
+      "attempted_entries": 0,
+      "closed_net_pnl_lamports": 0,
+      "closed_trades": 0,
+      "ending_cash_lamports": 100000000,
+      "ending_equity_lamports": 100000000,
+      "failed_exit_quotes": 0,
+      "filled_entries": 0,
+      "max_drawdown_lamports": 0,
+      "name": "no_trade",
+      "net_pnl_lamports": 0,
+      "open_positions": 0,
+      "rejected_entries": 0,
+      "starting_cash_lamports": 100000000,
+      "strategy": "S00",
+      "trades": []
+    },
+    {
+      "attempted_entries": 3,
+      "closed_net_pnl_lamports": -3341269,
+      "closed_trades": 3,
+      "ending_cash_lamports": 96658731,
+      "ending_equity_lamports": 96658731,
+      "failed_exit_quotes": 0,
+      "filled_entries": 3,
+      "max_drawdown_lamports": 3422689,
+      "name": "immediate_safe",
+      "net_pnl_lamports": -3341269,
+      "open_positions": 0,
+      "rejected_entries": 0,
+      "starting_cash_lamports": 100000000,
+      "strategy": "S01",
+      "trades": [
+        {
+          "entry_at_ms": 110,
+          "entry_cost": 2510000,
+          "exit_at_ms": 30110,
+          "exit_value": 1602567,
+          "mint": "SYNTHETIC_MINT_A",
+          "net_pnl": -907433
+        },
+        {
+          "entry_at_ms": 210,
+          "entry_cost": 2510000,
+          "exit_at_ms": 31010,
+          "exit_value": 267692,
+          "mint": "SYNTHETIC_MINT_B",
+          "net_pnl": -2242308
+        },
+        {
+          "entry_at_ms": 45210,
+          "entry_cost": 1010000,
+          "exit_at_ms": 70010,
+          "exit_value": 818472,
+          "mint": "SYNTHETIC_MINT_A",
+          "net_pnl": -191528
+        }
+      ]
+    },
+    {
+      "attempted_entries": 3,
+      "closed_net_pnl_lamports": -3165205,
+      "closed_trades": 3,
+      "ending_cash_lamports": 96834795,
+      "ending_equity_lamports": 96834795,
+      "failed_exit_quotes": 0,
+      "filled_entries": 3,
+      "max_drawdown_lamports": 3165205,
+      "name": "delay_5s",
+      "net_pnl_lamports": -3165205,
+      "open_positions": 0,
+      "rejected_entries": 0,
+      "starting_cash_lamports": 100000000,
+      "strategy": "S02",
+      "trades": [
+        {
+          "entry_at_ms": 5210,
+          "entry_cost": 2510000,
+          "exit_at_ms": 30110,
+          "exit_value": 1686220,
+          "mint": "SYNTHETIC_MINT_A",
+          "net_pnl": -823780
+        },
+        {
+          "entry_at_ms": 6010,
+          "entry_cost": 2510000,
+          "exit_at_ms": 31010,
+          "exit_value": 360103,
+          "mint": "SYNTHETIC_MINT_B",
+          "net_pnl": -2149897
+        },
+        {
+          "entry_at_ms": 45210,
+          "entry_cost": 1010000,
+          "exit_at_ms": 70010,
+          "exit_value": 818472,
+          "mint": "SYNTHETIC_MINT_A",
+          "net_pnl": -191528
+        }
+      ]
+    },
+    {
+      "attempted_entries": 3,
+      "closed_net_pnl_lamports": -3286201,
+      "closed_trades": 2,
+      "ending_cash_lamports": 95703799,
+      "ending_equity_lamports": 96645395,
+      "failed_exit_quotes": 0,
+      "filled_entries": 3,
+      "max_drawdown_lamports": 3354605,
+      "name": "delay_15s",
+      "net_pnl_lamports": -3354605,
+      "open_positions": 1,
+      "rejected_entries": 0,
+      "starting_cash_lamports": 100000000,
+      "strategy": "S03",
+      "trades": [
+        {
+          "entry_at_ms": 16510,
+          "entry_cost": 2510000,
+          "exit_at_ms": 31010,
+          "exit_value": 405939,
+          "mint": "SYNTHETIC_MINT_B",
+          "net_pnl": -2104061
+        },
+        {
+          "entry_at_ms": 15610,
+          "entry_cost": 2510000,
+          "exit_at_ms": 45210,
+          "exit_value": 1327860,
+          "mint": "SYNTHETIC_MINT_A",
+          "net_pnl": -1182140
+        }
+      ]
+    },
+    {
+      "attempted_entries": 1,
+      "closed_net_pnl_lamports": -823780,
+      "closed_trades": 1,
+      "ending_cash_lamports": 99176220,
+      "ending_equity_lamports": 99176220,
+      "failed_exit_quotes": 0,
+      "filled_entries": 1,
+      "max_drawdown_lamports": 1569183,
+      "name": "organic_flow",
+      "net_pnl_lamports": -823780,
+      "open_positions": 0,
+      "rejected_entries": 0,
+      "starting_cash_lamports": 100000000,
+      "strategy": "S04",
+      "trades": [
+        {
+          "entry_at_ms": 5210,
+          "entry_cost": 2510000,
+          "exit_at_ms": 30110,
+          "exit_value": 1686220,
+          "mint": "SYNTHETIC_MINT_A",
+          "net_pnl": -823780
+        }
+      ]
+    },
+    {
+      "attempted_entries": 1,
+      "closed_net_pnl_lamports": -1182140,
+      "closed_trades": 1,
+      "ending_cash_lamports": 98817860,
+      "ending_equity_lamports": 98817860,
+      "failed_exit_quotes": 0,
+      "filled_entries": 1,
+      "max_drawdown_lamports": 1568988,
+      "name": "dip_rebound",
+      "net_pnl_lamports": -1182140,
+      "open_positions": 0,
+      "rejected_entries": 0,
+      "starting_cash_lamports": 100000000,
+      "strategy": "S05",
+      "trades": [
+        {
+          "entry_at_ms": 15610,
+          "entry_cost": 2510000,
+          "exit_at_ms": 45210,
+          "exit_value": 1327860,
+          "mint": "SYNTHETIC_MINT_A",
+          "net_pnl": -1182140
+        }
+      ]
+    },
+    {
+      "attempted_entries": 1,
+      "closed_net_pnl_lamports": -823780,
+      "closed_trades": 1,
+      "ending_cash_lamports": 99176220,
+      "ending_equity_lamports": 99176220,
+      "failed_exit_quotes": 0,
+      "filled_entries": 1,
+      "max_drawdown_lamports": 1569183,
+      "name": "flow_creator_veto",
+      "net_pnl_lamports": -823780,
+      "open_positions": 0,
+      "rejected_entries": 0,
+      "starting_cash_lamports": 100000000,
+      "strategy": "S06",
+      "trades": [
+        {
+          "entry_at_ms": 5210,
+          "entry_cost": 2510000,
+          "exit_at_ms": 30110,
+          "exit_value": 1686220,
+          "mint": "SYNTHETIC_MINT_A",
+          "net_pnl": -823780
+        }
+      ]
+    },
+    {
+      "attempted_entries": 1,
+      "closed_net_pnl_lamports": -1182140,
+      "closed_trades": 1,
+      "ending_cash_lamports": 98817860,
+      "ending_equity_lamports": 98817860,
+      "failed_exit_quotes": 0,
+      "filled_entries": 1,
+      "max_drawdown_lamports": 1568988,
+      "name": "curve_regime",
+      "net_pnl_lamports": -1182140,
+      "open_positions": 0,
+      "rejected_entries": 0,
+      "starting_cash_lamports": 100000000,
+      "strategy": "S07",
+      "trades": [
+        {
+          "entry_at_ms": 15610,
+          "entry_cost": 2510000,
+          "exit_at_ms": 45210,
+          "exit_value": 1327860,
+          "mint": "SYNTHETIC_MINT_A",
+          "net_pnl": -1182140
+        }
+      ]
+    },
+    {
+      "attempted_entries": 1,
+      "closed_net_pnl_lamports": -1763622,
+      "closed_trades": 1,
+      "ending_cash_lamports": 98236378,
+      "ending_equity_lamports": 98236378,
+      "failed_exit_quotes": 0,
+      "filled_entries": 1,
+      "max_drawdown_lamports": 1763622,
+      "name": "pre_graduation",
+      "net_pnl_lamports": -1763622,
+      "open_positions": 0,
+      "rejected_entries": 0,
+      "starting_cash_lamports": 100000000,
+      "strategy": "S08",
+      "trades": [
+        {
+          "entry_at_ms": 30110,
+          "entry_cost": 2510000,
+          "exit_at_ms": 70010,
+          "exit_value": 746378,
+          "mint": "SYNTHETIC_MINT_A",
+          "net_pnl": -1763622
+        }
+      ]
+    },
+    {
+      "attempted_entries": 1,
+      "closed_net_pnl_lamports": -1691528,
+      "closed_trades": 1,
+      "ending_cash_lamports": 98308472,
+      "ending_equity_lamports": 98308472,
+      "failed_exit_quotes": 0,
+      "filled_entries": 1,
+      "max_drawdown_lamports": 1691528,
+      "name": "post_migration",
+      "net_pnl_lamports": -1691528,
+      "open_positions": 0,
+      "rejected_entries": 0,
+      "starting_cash_lamports": 100000000,
+      "strategy": "S09",
+      "trades": [
+        {
+          "entry_at_ms": 45210,
+          "entry_cost": 2510000,
+          "exit_at_ms": 70010,
+          "exit_value": 818472,
+          "mint": "SYNTHETIC_MINT_A",
+          "net_pnl": -1691528
+        }
+      ]
+    },
+    {
+      "attempted_entries": 2,
+      "closed_net_pnl_lamports": -1015308,
+      "closed_trades": 2,
+      "ending_cash_lamports": 98984692,
+      "ending_equity_lamports": 98984692,
+      "failed_exit_quotes": 0,
+      "filled_entries": 2,
+      "max_drawdown_lamports": 1569183,
+      "name": "liquidity_first",
+      "net_pnl_lamports": -1015308,
+      "open_positions": 0,
+      "rejected_entries": 0,
+      "starting_cash_lamports": 100000000,
+      "strategy": "S10",
+      "trades": [
+        {
+          "entry_at_ms": 5210,
+          "entry_cost": 2510000,
+          "exit_at_ms": 30110,
+          "exit_value": 1686220,
+          "mint": "SYNTHETIC_MINT_A",
+          "net_pnl": -823780
+        },
+        {
+          "entry_at_ms": 45210,
+          "entry_cost": 1010000,
+          "exit_at_ms": 70010,
+          "exit_value": 818472,
+          "mint": "SYNTHETIC_MINT_A",
+          "net_pnl": -191528
+        }
+      ]
+    }
+  ],
+  "schema_version": 1
+}

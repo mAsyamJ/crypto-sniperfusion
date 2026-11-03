@@ -70,6 +70,16 @@ enum Command {
         #[arg(long, value_name = "PUBKEY")]
         address: Option<String>,
     },
+    /// Offline multi-strategy research batch (H7): runs the S00..S10
+    /// registry over a frozen observation dataset with identical inputs,
+    /// evaluates the full portfolio, and writes an immutable receipt.
+    /// Permanently nonpromotable; never touches a network or signer.
+    Research {
+        #[arg(long, value_name = "JSONL")]
+        events: PathBuf,
+        #[arg(long, value_name = "JSON")]
+        out: PathBuf,
+    },
     /// Live trading. Requires a `live`-feature build plus four runtime gates.
     Live {
         #[arg(long)]
@@ -127,6 +137,7 @@ fn main() -> ExitCode {
             timeout_secs,
             address,
         } => run_rpc_probe(cluster.into(), timeout_secs, address.as_deref()),
+        Command::Research { events, out } => run_research(events, out),
         Command::Live {
             config,
             kill_switch_path,
@@ -166,6 +177,110 @@ fn run_rpc_probe(
     let report = probe_endpoint(&endpoint, Duration::from_secs(timeout_secs), address)
         .map_err(|e| e.to_string())?;
     serde_json::to_string_pretty(&report).map_err(|e| e.to_string())
+}
+
+/// Offline research batch (H7): S00..S10 over one dataset, identical
+/// inputs, full-portfolio evaluation, immutable write-once receipt.
+/// Deterministic by construction: no wall clock, no RNG, no network.
+fn run_research(events: PathBuf, out: PathBuf) -> Result<String, String> {
+    use sniper_strategy::engine::legacy::{self, LegacyParams};
+    use sniper_strategy::eval;
+    use sniper_strategy::{Observation, RiskConstraints, StrategyKnobs};
+
+    let live = std::env::var("LIVE_TRADING_ENABLED").unwrap_or_default();
+    if !matches!(live.as_str(), "" | "false" | "0") {
+        return Err("research refuses LIVE_TRADING_ENABLED".into());
+    }
+
+    let text =
+        std::fs::read_to_string(&events).map_err(|e| format!("read {}: {e}", events.display()))?;
+    let dataset: Vec<Observation> =
+        sniper_strategy::load_events(&text).map_err(|e| format!("invalid dataset: {e}"))?;
+    let dataset_sha = {
+        use sha2::Digest;
+        let digest = sha2::Sha256::digest(text.as_bytes());
+        digest
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<String>()
+    };
+
+    let knobs = StrategyKnobs::default();
+    let risk = RiskConstraints::default();
+    let params = LegacyParams::default();
+    let cash = 100_000_000u64;
+
+    let mut results = Vec::new();
+    let mut traces = Vec::new();
+    for mut strategy in sniper_strategy::registry(knobs) {
+        let (result, trace) =
+            legacy::run_with_trace(&dataset, strategy.as_mut(), cash, &risk, &params);
+        results.push(result);
+        traces.push(trace);
+    }
+    let evaluation = eval::evaluate_batch(&results, &traces);
+
+    let receipt = serde_json::json!({
+        "schema_version": 1,
+        "command": "research",
+        "engine": "LegacySurrogateV1",
+        "evidence_class": evaluation.evidence_class,
+        "promotable": false,
+        "live_trading_enabled": false,
+        "dataset": {
+            "path": events.display().to_string(),
+            "sha256": dataset_sha,
+            "events": dataset.len(),
+            "mints": dataset.iter().map(|e| e.mint.clone()).collect::<std::collections::BTreeSet<_>>().len(),
+        },
+        "parameters": {
+            "cash_lamports": cash,
+            "spend_lamports": risk.spend_lamports,
+            "knobs": { "min_buyers": knobs.min_buyers, "liquidity_multiple": knobs.liquidity_multiple },
+            "legacy": {
+                "slip_bps": params.slip_bps,
+                "tx_cost_lamports": params.tx_cost_lamports,
+                "ata_rent_lamports": params.ata_rent_lamports,
+                "max_hold_ms": params.max_hold_ms,
+            },
+        },
+        "no_trade_baseline": "S00",
+        "verdict": evaluation.verdict,
+        "results": results,
+        "metrics": evaluation.metrics.into_iter().collect::<std::collections::BTreeMap<_, _>>(),
+        "limitations": evaluation.limitations,
+        "determinism": "bit-identical for identical dataset + parameters (no clock, no RNG)",
+    });
+    let body = serde_json::to_string_pretty(&receipt).map_err(|e| e.to_string())? + "\n";
+
+    // Write-once immutable receipt (exclusive create + fsync + 0444).
+    if let Some(parent) = out.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    use std::io::Write;
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&out)
+        .map_err(|e| format!("refusing to overwrite {}: {e}", out.display()))?;
+    file.write_all(body.as_bytes()).map_err(|e| e.to_string())?;
+    file.flush().map_err(|e| e.to_string())?;
+    drop(file);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&out, std::fs::Permissions::from_mode(0o444))
+            .map_err(|e| e.to_string())?;
+    }
+
+    let summary = serde_json::json!({
+        "out": out.display().to_string(),
+        "dataset_sha256": dataset_sha,
+        "verdict": evaluation.verdict,
+        "promotable": false,
+        "strategies": results.len(),
+    });
+    Ok(serde_json::to_string_pretty(&summary).unwrap())
 }
 
 fn run_replay_mode(

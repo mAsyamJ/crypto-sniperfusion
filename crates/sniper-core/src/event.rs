@@ -114,6 +114,16 @@ pub enum DedupOutcome {
     Duplicate,
 }
 
+impl DedupOutcome {
+    pub fn is_first_seen(self) -> bool {
+        matches!(self, DedupOutcome::FirstSeen)
+    }
+
+    pub fn is_duplicate(self) -> bool {
+        matches!(self, DedupOutcome::Duplicate)
+    }
+}
+
 /// Fixed-capacity registry of seen event ids. Evicts oldest-first; a duplicate
 /// is only detectable while its id remains resident (capacity is therefore a
 /// correctness parameter, documented per pipeline).

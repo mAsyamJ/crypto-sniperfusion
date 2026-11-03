@@ -18,6 +18,8 @@ Living document; update at every milestone close. Format: state, evidence pointe
 | INFRA — Solana disposable wallets + operator RPC validation | **COMPLETE** (2026-11-04; docs-only, no code change) | `docs/evidence/INFRA-solana-rpc-wallets.md` |
 | INFRA-2 — Operator RPCs integrated: `sniper rpc-probe` + endpoint resolution | **COMPLETE** (2026-11-04; full engineering loop, 179/179 tests ×2) | `docs/evidence/INFRA-2-rpc-integration.md` |
 | INFRA-3 — Mainnet readiness: unfunded watch wallet + `rpc-probe --address` | **COMPLETE** (2026-11-04; read-only only, 249/249 tests ×2 on merged tree) | `docs/evidence/INFRA-3-mainnet-readiness.md` |
+| H6 — Canonical dataset contracts + bounded creation-cohort collector | **COMPLETE (code)** (2026-11-04; 266/266 Rust ×2, 55 Python; live cohort coverage INCOMPLETE — provider cannot serve block evidence; G0 stays BLOCKED) | `docs/evidence/H6.md` |
+| H7 — Strategy SDK (S00–S10, two engines) + accounting oracle + evaluator/CLI | **COMPLETE (code)** (2026-11-04; Engine A byte-exact Python parity; verdict EDGE_NOT_DEMONSTRATED — S00 dominates on the synthetic cohort; nothing promotable) | `docs/evidence/H7.md` |
 | M4 — Chainstack parity scope closure | PLANNED | — |
 | M5 — Token intelligence + DevFlowMonitor | PLANNED | — |
 | M6 — Multi-DEX + copy trading | PLANNED | — |
@@ -124,3 +126,19 @@ be fed from `SNF_MAINNET_RPC_URL` (read-only). Details: `docs/evidence/INFRA-2-r
 ## H5 candidate — Devnet protocol verification and offline research loop (2026-11-04)
 
 Draft PR #6 adds a Devnet-genesis-bound Rust protocol pilot (read-only preflight; explicit transaction test), a separate read-only cluster probe, and bounded synthetic-only research cycles with immutable trial receipts. Full validation is tracked in PR #6. Real Devnet transaction signatures have not been collected by this integration. These demonstrations cannot prove profitability, and mainnet live trading remains disabled. See `docs/DEVNET_EXECUTION_PILOT.md` and `harness/docs/RESEARCH_CYCLE_V1.md`.
+
+
+## H6+H7 session record (2026-11-04, branch `codex/h6-h7-lifecycle-strategy-20261104`, local only — not pushed)
+
+Executed the agent-executable hand-off PRs (goal plan PR-next-2 and PR-next-3) with the deep-research report's still-open findings folded in (fee truth, independent evaluator, dual replay order, negative controls; its two P0s were already remediated at `204d853`/`b5e266c` and were re-verified by their regression tests at session start).
+
+- H6-1 `8bb39aa`: canonical order (block-sourced transaction_index only, unknown coordinates refuse to sort), provenance (commitment history, fork abandonment), causality (`feature_available <= decision` only), coverage states COMPLETE/INCOMPLETE/CENSORED/UNKNOWN independent of lifecycle, labels physically separated, persistent dedup journal.
+- H6-2 `0499b6a` + `92a2b2e`: read-only Mainnet creation-cohort collector; completeness only from getBlock evidence + reconciliation; live attempts classified MAINNET_READ_ONLY_OBSERVED with honest INCOMPLETE/UNKNOWN coverage (public RPC 429s; Infura refuses getBlock for versioned txs). Key handling: operator Infura endpoint used via env only, never committed; owner should rotate the key pasted in chat.
+- H7-1 `17410cd`: pure crate `sniper-strategy`; S00–S10; Engine A LegacySurrogateV1 byte-exact vs frozen Python fixture (differential test committed); S00 NO_TRADE dominates all traders on the synthetic cohort.
+- H7-2 `cc75b55`: market-cap-tiered curve fees per pinned pump-docs (labeled synthetic fallback when unobserved; retroactive fee states refused), PumpSwap 20+5+creator bps, Engine B on real reserve math with signed reserves, SOL-only routing (others fail closed), latency + failed-landing frictions, full fee attribution in execution records.
+- H7-3 `4124839`: independent double-entry oracle (signed balances, per-posting accounting-equation verification, FIFO lots with proportional partial-exit basis, effective-cost inventory, unknown holds excluded from NAV, shared-wallet contention); cross-engine reconstruction test must match engine cash to the lamport.
+- H7-4 `77b5a79`: full-portfolio evaluator (CVaR95 with declared 20-trade minimum, profit factor safe on zero denominators, per-phase attribution, outlier dominance, vs S00), the 12 mandated negative controls in one battery, `sniper research` CLI with deterministic write-once receipts (promotable false).
+
+Operator concurrent work preserved: INFRA-3 `0e36fb0` landed on this branch mid-session; further uncommitted rpc_probe edits remain untouched in the working tree.
+
+Next actions: (1) operator RPC tier that serves `getBlock` → rerun collector for a real COMPLETE cohort window (G0); (2) wire Engine B to real snapshots once the cohort exists; (3) H8/PR-next-4 (council sandbox, trial registry, sealed holdout access control, multiple-testing correction); H5-B Devnet round-trip still operator-gated BLOCKED; H3 shadow ≥7 days still NOT_STARTED.

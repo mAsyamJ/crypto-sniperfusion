@@ -1,0 +1,24 @@
+[package]
+name = "sniper-strategy"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+# Pure deterministic strategy SDK: no network, no clocks, no signing. Every
+# decision is a pure function of the observation stream and explicit inputs.
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+# Reserve math reuse only (curve/amm constant-product, effective-quote
+# reserves, fee application) — the same math the protocol builders and
+# fork tests use. No network, clock, or signing surface enters via this dep.
+sniper-protocols.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+solana-sdk.workspace = true
+sniper-core.workspace = true
