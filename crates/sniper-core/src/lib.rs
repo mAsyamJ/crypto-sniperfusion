@@ -10,8 +10,11 @@
 
 pub mod authz;
 pub mod config;
+pub mod coverage;
 pub mod error;
 pub mod event;
+pub mod labels;
+pub mod observation;
 pub mod primitives;
 pub mod serde_keys;
 pub mod time;
