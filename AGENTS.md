@@ -56,3 +56,18 @@ New research flow: `harness/docs/RESEARCH_LOOP_RUNBOOK.md`. V0 `harness/research
 ## H5–H8 Master Mission (2026-11-04)
 
 For new coding agents: read `harness/docs/MASTER_AGENT_MISSION_H5_H8.md`, `harness/docs/H5_H8_GOAL_PLAN.md` and `.agents/skills/sniperfusion-mission-director/SKILL.md` before beginning any research/Devnet work. The local `python3 harness/agent_mission.py plan` and `python3 harness/agent_mission.py run --events harness/fixtures/research/synthetic_lifecycle.jsonl --cycles 3 --out harness/runs/mission-001.json` are deliberately **offline, synthetic, and not promotable**. Do not confuse an unverified gate with a PASS. Never give the offline agent runner a funded key or a Devnet pilot signer, and never call `devnet-pump-pilot --submit` automatically. A separate operator explicitly approves at most one bounded Devnet protocol test, not mainnet sniping.
+
+
+## Current operating entrypoint (H7 merged; reviewed 2026-11-04)
+
+**Precedence:** direct operator instructions > safety restrictions in this file > `docs/AGENT_OPERATIONS.md` > specialist skill playbooks > archived milestone prompts. Read `docs/PROJECT_STATUS.md` and evidence at the current `git rev-parse HEAD` before treating a statement as implemented.
+
+Start with `python3 harness/agentctl.py doctor`, `python3 harness/agentctl.py skills`, and `python3 harness/agentctl.py commands`. This is a *read-only, offline* dispatch tool, NOT an autonomous agent, broadcaster, key reader or substitute for `harness/snf-harness`.
+
+Specialist routing: `sniperfusion-maintainer` owns repository discipline; `solana-rust-engineer` owns Rust/IDL/SVM correctness; `memecoin-trader-research` owns realistic trade hypotheses; `cohort-coverage-engineer` owns unbiased G0 collection; `h8-research-council` owns preregistration, trial budgets and independent criticism. Existing 11 skills remain active and are consulted as appropriate.
+
+**Current facts:** H6/H7 source is merged; G0 COMPLETE-coverage mainnet cohort NOT established; H3 >=7-day shadow NOT started; Engine B lacks verified real snapshots and fee provenance; synthetic S00 NO_TRADE beat S01-S10. The legacy `harness/agent_mission.py plan` and older H5-H8 documents have stale implementation-state strings; treat `docs/evidence/H6.md`, `docs/evidence/H7.md` and actual code as the present evidence, not old planning tables.
+
+No AI job may read/show RPC secrets or wallet key material, change the operator's credential, spend funds, run `--submit`, change public/private visibility, or promote a synthetic result to live execution. Repository-local skills are documentation and do not grant external tool permissions. Use official Foundation Solana development skills only after reviewing and pinning the external source; never execute external install scripts as a side effect of reading skill instructions.
+
+The next bounded work package is in `docs/NEXT_GOAL_H8_G0.md`. Preserve existing code and do not declare a gate green without a dated, independently reproducible receipt.
