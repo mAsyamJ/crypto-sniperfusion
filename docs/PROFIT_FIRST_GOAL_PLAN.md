@@ -28,6 +28,12 @@ Two separate economic measurements are required:
 
 For multiple quote currencies, report **SOL-equivalent and USD-equivalent series separately**, using as-of conversion marks with explicit source/age. Decompose change caused by underlying SOL/USD fluctuations from trade alpha.
 
+## P0 fee-model risk discovered during this review
+
+The existing `crates/sniper-strategy/src/fees.rs` `PumpSwapFeeState::canonical_reference()` returns **25 bps** total (20 LP + 5 protocol + 0 creator). The currently published https://pump.fun/docs/fees canonical PumpSwap tiers list **125 bps for the lowest-market-cap tier**, decreasing with market cap. This is not proof that every Engine B result is incorrect, because `canonical_reference` is a reference/test fixture, not an observed on-chain fee account. It **is a material risk of underpricing PumpSwap execution** if any real batch treats the reference value as the actual canonical fee.
+
+Before any real-data leaderboard: trace every use of `canonical_reference()`; add failing tests for market-cap-dependent canonical fees and the boundary tiers using current authoritative program/fee_config accounts; verify protocol + creator + LP components, cashback and custom pairs as applicable, measured paid amounts against deployed-program Surfpool account deltas, and fail closed when fee provenance is not observed as of decision. Do not substitute a web schedule for on-chain fee_config at an arbitrary historic slot. **Gate: no silent 25-bps canonical fee default in real P&L evidence.**
+
 ## P&L V2 ledger contract
 
 Use the existing independent `crates/sniper-strategy/src/oracle.rs` as the financial control plane; enhance without discarding double-entry accounting.
