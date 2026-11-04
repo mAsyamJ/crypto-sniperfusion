@@ -85,6 +85,10 @@ enum Rule {
     PreGraduation,
     PostMigration,
     LiquidityFirst,
+    /// Base eligibility (coverage+ELIGIBLE+tradeable) + deterministic
+    /// 20% pseudo-random selection by FNV(event_id) — a chance baseline
+    /// for the matched comparison contract.
+    RandomEligible,
 }
 
 /// One registered strategy: identity + rule + knobs + per-mint tracking.
@@ -132,6 +136,12 @@ impl EntryPolicy {
         "liquidity_first",
         Rule::LiquidityFirst
     );
+    policy_ctor!(
+        random_eligible,
+        StrategyId::Rand,
+        "random_eligible",
+        Rule::RandomEligible
+    );
 
     /// Mirrors `research_batch.py::eligible` field-for-field.
     fn eligible(&self, obs: &Observation, track: &MintTrack, risk: &RiskConstraints) -> bool {
@@ -166,6 +176,15 @@ impl EntryPolicy {
             Rule::PostMigration => {
                 matches!(obs.phase, Phase::PumpswapOpen | Phase::PostMigration)
                     && obs.unique_buyers >= 3
+            }
+            Rule::RandomEligible => {
+                // Deterministic 2000/10000 selection; no RNG state.
+                let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+                for byte in obs.event_id.bytes() {
+                    hash ^= u64::from(byte);
+                    hash = hash.wrapping_mul(0x100_0000_01b3);
+                }
+                hash % 10_000 < 2_000
             }
             Rule::LiquidityFirst => {
                 (obs.exit_liquidity_lamports as u128)

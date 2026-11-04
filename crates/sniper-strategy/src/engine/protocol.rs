@@ -89,6 +89,21 @@ impl MarketBook {
             .rev()
             .find(|s| s.slot <= slot)
     }
+
+    /// Load from a JSONL file of `MarketSnapshot` records (fixture or
+    /// H6-collected data). Invalid lines are a hard error — never skipped.
+    pub fn load_jsonl(text: &str) -> Result<Self, String> {
+        let mut book = Self::new();
+        for (index, line) in text.lines().enumerate() {
+            if line.trim().is_empty() {
+                continue;
+            }
+            let snapshot: MarketSnapshot = serde_json::from_str(line)
+                .map_err(|e| format!("snapshot line {}: {e}", index + 1))?;
+            book.push(snapshot);
+        }
+        Ok(book)
+    }
 }
 
 /// Deterministic execution frictions (scenario input, never hidden state).
@@ -138,6 +153,7 @@ pub enum ExecutionRecord {
         priority_fee_lamports: u64,
         tip_lamports: u64,
         rent_lamports: u64,
+        slippage_lamports: u64,
         fee_synthetic_fallback: bool,
     },
     SellFill {
@@ -153,6 +169,7 @@ pub enum ExecutionRecord {
         priority_fee_lamports: u64,
         tip_lamports: u64,
         rent_recovered_lamports: u64,
+        slippage_lamports: u64,
         fee_synthetic_fallback: bool,
     },
     /// Entry attempt refused before any cash moved.
@@ -477,12 +494,17 @@ fn buy(
             }
         }
     };
-    // Adverse slippage on the token output (deterministic, conservative).
+    // Adverse slippage on the token output (deterministic, conservative);
+    // recorded in quote-equivalent for the waterfall (PF1).
     let slipped = apply_fee_in(fill.tokens_out, frictions.slippage_bps as u16)
         .map_err(|_| RejectionReason::InvalidReserves)?;
     if slipped == 0 {
         return Err(RejectionReason::EmptyOutput);
     }
+    let slip_quote = ((spend - fill.protocol_fee - fill.creator_fee - fill.lp_fee)
+        * (fill.tokens_out - slipped))
+        .checked_div(fill.tokens_out)
+        .unwrap_or(0);
     Ok(ExecutionRecord::BuyFill {
         event_id: event.event_id.clone(),
         mint: mint.to_string(),
@@ -496,6 +518,7 @@ fn buy(
         priority_fee_lamports: frictions.priority_fee_lamports,
         tip_lamports: frictions.tip_lamports,
         rent_lamports: rent,
+        slippage_lamports: slip_quote,
         fee_synthetic_fallback: fill.synthetic_fallback,
     })
 }
@@ -560,8 +583,10 @@ fn sell(
             let fee_bps = (resolved.protocol_bps + resolved.creator_bps) as u16;
             let net = apply_fee_in(gross, fee_bps).map_err(|_| RejectionReason::InvalidReserves)?;
             // Adverse slippage on the quote output, then network costs.
+            let net_before_slip = net;
             let net = apply_fee_in(net, frictions.slippage_bps as u16)
                 .map_err(|_| RejectionReason::InvalidReserves)?;
+            let slip_quote = net_before_slip - net;
             let net = net.saturating_sub(
                 frictions.base_network_fee_lamports + frictions.priority_fee_lamports,
             );
@@ -585,6 +610,7 @@ fn sell(
                 priority_fee_lamports: frictions.priority_fee_lamports,
                 tip_lamports: 0,
                 rent_recovered_lamports: rent_recovered,
+                slippage_lamports: slip_quote,
                 fee_synthetic_fallback: resolved.synthetic_fallback,
             })
         }
@@ -611,8 +637,10 @@ fn sell(
             let fee_bps =
                 (resolved.lp_fee_bps + resolved.protocol_bps + resolved.creator_bps) as u16;
             let net = apply_fee_in(gross, fee_bps).map_err(|_| RejectionReason::InvalidReserves)?;
+            let net_before_slip = net;
             let net = apply_fee_in(net, frictions.slippage_bps as u16)
                 .map_err(|_| RejectionReason::InvalidReserves)?;
+            let slip_quote = net_before_slip - net;
             let net = net.saturating_sub(
                 frictions.base_network_fee_lamports + frictions.priority_fee_lamports,
             );
@@ -636,6 +664,7 @@ fn sell(
                 priority_fee_lamports: frictions.priority_fee_lamports,
                 tip_lamports: 0,
                 rent_recovered_lamports: rent_recovered,
+                slippage_lamports: slip_quote,
                 fee_synthetic_fallback: resolved.synthetic_fallback,
             })
         }

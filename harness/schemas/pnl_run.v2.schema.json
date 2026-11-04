@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PnlRunReceiptV2",
+  "description": "SniperFusion profit-first P&L V2 run receipt (PF1). Deterministic: identical inputs produce an identical receipt_sha256. Synthetic runs are permanently promotable=false.",
+  "type": "object",
+  "required": [
+    "schema_version", "engine", "evidence_class", "proof_state", "promotable",
+    "live_trading_enabled", "currency", "completeness", "dataset_sha256",
+    "starting_nav_lamports", "external_deposits_lamports", "external_withdrawals_lamports",
+    "ending_nav_lamports", "realized_pnl_lamports", "unrealized_pnl_lamports",
+    "net_pnl_lamports", "recoverable_rent_lamports", "open_inventory_cost_basis_lamports",
+    "open_positions", "unexitable_exits", "unknown_at_risk_lamports",
+    "fees_by_kind_lamports", "attribution", "comparison", "verdict",
+    "limitations", "receipt_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": 2},
+    "engine": {"type": "string"},
+    "evidence_class": {"type": "string"},
+    "proof_state": {"enum": ["SYNTHETIC", "FORK_MECHANICS", "SHADOW_ESTIMATE", "LIVE_CONFIRMED"]},
+    "promotable": {"type": "boolean"},
+    "live_trading_enabled": {"type": "boolean"},
+    "currency": {"type": "string"},
+    "completeness": {"type": "string"},
+    "dataset_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "starting_nav_lamports": {"type": "integer", "minimum": 0},
+    "external_deposits_lamports": {"type": "integer", "minimum": 0},
+    "external_withdrawals_lamports": {"type": "integer", "minimum": 0},
+    "ending_nav_lamports": {"type": "integer", "minimum": 0},
+    "realized_pnl_lamports": {"type": "integer"},
+    "unrealized_pnl_lamports": {"type": "integer"},
+    "net_pnl_lamports": {"type": "integer"},
+    "recoverable_rent_lamports": {"type": "integer", "minimum": 0},
+    "open_inventory_cost_basis_lamports": {"type": "integer", "minimum": 0},
+    "open_positions": {"type": "integer", "minimum": 0},
+    "unexitable_exits": {"type": "integer", "minimum": 0},
+    "unknown_at_risk_lamports": {"type": "integer", "minimum": 0},
+    "fees_by_kind_lamports": {
+      "type": "object",
+      "additionalProperties": {"type": "integer", "minimum": 0},
+      "description": "Gross-to-net waterfall by category: protocol, creator, lp, network, priority, tip, slippage, rentlocked, rentrecovered, rentwrittenoff."
+    },
+    "attribution": {"type": "object"},
+    "comparison": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["strategy", "net_pnl_lamports", "incremental_net_edge_vs_no_trade", "max_drawdown_lamports", "open_positions", "status"],
+        "properties": {
+          "strategy": {"type": "string"},
+          "net_pnl_lamports": {"type": "integer"},
+          "incremental_net_edge_vs_no_trade": {"type": "integer"},
+          "max_drawdown_lamports": {"type": "integer", "minimum": 0},
+          "open_positions": {"type": "integer", "minimum": 0},
+          "status": {"type": "string"}
+        }
+      }
+    },
+    "verdict": {"type": "string"},
+    "limitations": {"type": "array", "items": {"type": "string"}},
+    "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

@@ -19,6 +19,7 @@ pub mod fees;
 pub mod observation;
 pub mod oracle;
 pub mod policies;
+pub mod receipt;
 
 pub use observation::{load_events, Observation, Phase, Safety, ValidationError};
 pub use policies::{registry, StrategyKnobs};
@@ -40,6 +41,9 @@ pub enum StrategyId {
     S08,
     S09,
     S10,
+    /// Deterministic RANDOM_ELIGIBLE baseline (PF1 comparison contract).
+    #[serde(rename = "RX")]
+    Rand,
 }
 
 impl StrategyId {
@@ -56,6 +60,7 @@ impl StrategyId {
             StrategyId::S08 => "S08",
             StrategyId::S09 => "S09",
             StrategyId::S10 => "S10",
+            StrategyId::Rand => "RX",
         }
     }
 }
