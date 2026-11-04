@@ -20,6 +20,9 @@ class AgentMissionTests(unittest.TestCase):
         p = plan()
         self.assertEqual(p["safety"], "OFFLINE_RESEARCH_ONLY")
         self.assertEqual(len(p["phases"]), 4)
+        self.assertEqual(p["gates"]["G0_full_launch_dataset"], "BLOCKED_NO_COMPLETE_MAINNET_COHORT")
+        self.assertIn("RUST_STRATEGY_SDK", p["phases"][2]["current"])
+        self.assertNotEqual(p["phases"][1]["current"], "SAMPLE_COLLECTOR_ONLY_NO_COMPLETENESS_PROOF")
         self.assertEqual(p["gates"]["G7_paper_only_promotion"], "DISABLED")
         self.assertTrue(any("mainnet" in a for a in p["prohibited_actions"]))
 
