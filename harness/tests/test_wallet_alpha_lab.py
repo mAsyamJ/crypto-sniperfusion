@@ -2,7 +2,11 @@
 import importlib.util
 import json
 import tempfile
+import sys
 import unittest
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -77,3 +81,52 @@ class WalletAlphaLabTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class WalletRosterTests(unittest.TestCase):
+    def test_discovery_excludes_infrastructure_and_failed(self):
+        import wallet_roster as wr
+        import json as _json
+        from pathlib import Path as _P
+        pump = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
+        w = "Wa11etWa11etWa11etWa11etWa11etWa11etWa11etWa"
+        tx_ok = {
+            "transaction": {"signatures": ["S1"], "message": {"accountKeys": [w, pump]}},
+            "meta": {"err": None,
+                     "preTokenBalances": [], "postTokenBalances": [
+                         {"owner": w, "mint": "M", "accountIndex": 2,
+                          "uiTokenAmount": {"amount": "5", "decimals": 6}}]},
+        }
+        tx_failed = {
+            "transaction": {"signatures": ["S2"], "message": {"accountKeys": [pump, pump]}},
+            "meta": {"err": {"InstructionError": [0, "Custom(1)"]}, "preTokenBalances": [], "postTokenBalances": []},
+        }
+        wallets = wr.discover_wallets([tx_ok, tx_failed])
+        self.assertIn(w, wallets)
+        self.assertNotIn(pump, wallets, "infrastructure never ranks as a wallet")
+
+    def test_ranking_tiers_and_uncertainty(self):
+        import wallet_roster as wr
+        receipts = {
+            "profitableObserved": {"net_pnl_lamports": 1_000, "records": 5, "skipped": 0,
+                                   "incomplete": 0, "unobserved_opening_inventory_events": 0,
+                                   "unobserved_deposits_lamports": 0},
+            "loserObserved": {"net_pnl_lamports": -4_961_316_798, "records": 3, "skipped": 0,
+                              "incomplete": 0, "unobserved_opening_inventory_events": 0,
+                              "unobserved_deposits_lamports": 4_961_316_798},
+            "unknownHistory": {"net_pnl_lamports": 0, "records": 3, "skipped": 0,
+                               "incomplete": 0, "unobserved_opening_inventory_events": 3,
+                               "unobserved_deposits_lamports": 0},
+            "noTrades": {"net_pnl_lamports": 0, "records": 0, "skipped": 2,
+                         "incomplete": 0, "unobserved_opening_inventory_events": 0,
+                         "unobserved_deposits_lamports": 0},
+        }
+        rows = wr.rank(receipts)
+        tiers = {r["wallet"]: r["tier"] for r in rows}
+        self.assertEqual(tiers["profitableObserved"], "CANDIDATE")
+        self.assertEqual(tiers["loserObserved"], "REJECTED_LOSS")
+        self.assertEqual(tiers["unknownHistory"], "LOW_CONFIDENCE")
+        self.assertEqual(tiers["noTrades"], "UNRANKABLE")
+        self.assertEqual(rows[0]["wallet"], "profitableObserved", "net P&L dominates rank")
+        for row in rows:
+            self.assertIn("uncertainty", row, "uncertainty column mandatory")

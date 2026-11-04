@@ -202,16 +202,18 @@ impl AccountingOracle {
             fee_lines: Vec::new(),
             tick: 0,
         };
-        oracle
-            .post(LedgerEntry {
-                tick: 0,
-                strategy: "opening".into(),
-                debit: Account::Cash,
-                credit: Account::Equity,
-                amount: starting_cash,
-                memo: "opening balance".into(),
-            })
-            .expect("opening balance always posts");
+        if starting_cash > 0 {
+            oracle
+                .post(LedgerEntry {
+                    tick: 0,
+                    strategy: "opening".into(),
+                    debit: Account::Cash,
+                    credit: Account::Equity,
+                    amount: starting_cash,
+                    memo: "opening balance".into(),
+                })
+                .expect("opening balance always posts");
+        }
         oracle
     }
 
@@ -685,6 +687,37 @@ impl AccountingOracle {
     /// Open FIFO lots for a mint (empty = none).
     pub fn lots_for(&self, mint: &str) -> &[Lot] {
         self.lots.get(mint).map(|v| v.as_slice()).unwrap_or(&[])
+    }
+
+    /// Unobserved OPENING inventory (WA2): tokens the wallet held before
+    /// the observed window. `cost_basis_lamports` is the EXPLICIT assumed
+    /// basis — for observed sells of unknown-basis inventory pass the
+    /// proceeds so the sell contributes ZERO realized P&L (never an
+    /// invented profit or loss). Posts an equity-backed entry + a FIFO lot.
+    pub fn post_opening_inventory(
+        &mut self,
+        mint: &str,
+        tokens: u64,
+        cost_basis_lamports: u64,
+    ) -> Result<(), AccountingError> {
+        self.tick += 1;
+        // Fund from ExternalDeposits (unobserved capital inflow): net_pnl
+        // subtracts deposits, so unknown-basis inventory never counts as
+        // profit when basis == proceeds (zero realized P&L by construction).
+        self.post(LedgerEntry {
+            tick: self.tick,
+            strategy: "external".into(),
+            debit: Account::TokenInventory { mint: mint.into() },
+            credit: Account::ExternalDeposits,
+            amount: cost_basis_lamports.max(1),
+            memo: "unobserved opening inventory".into(),
+        })?;
+        let amount = cost_basis_lamports.max(1);
+        self.lots.entry(mint.into()).or_default().push(Lot {
+            tokens,
+            cost_basis_lamports: amount,
+        });
+        Ok(())
     }
 
     /// Owner deposit: cash IN that is NOT trading P&L (PF0 CE-3).
