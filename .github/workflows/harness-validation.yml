@@ -4,6 +4,10 @@ on:
   push:
     paths:
       - "harness/**"
+      - ".agents/skills/**"
+      - "docs/PROFIT_FIRST_GOAL_PLAN.md"
+      - "AGENTS.md"
+      - "README.md"
       - ".github/workflows/harness-validation.yml"
   pull_request:
     paths:
@@ -15,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Validate local agent skills
+        run: python3 harness/agentctl.py lint-skills
       - name: Shell syntax
         run: bash -n harness/scripts/*.sh
       - name: Evaluator unit tests

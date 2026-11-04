@@ -68,3 +68,7 @@ The SniperFusion repository has no general redistribution license granted beyond
 ## Safe Mainnet RPC block-capability probe
 
 If your existing operator-owned `SNF_MAINNET_RPC_URL` is already set in your shell, run `python3 harness/rpc_capability_probe.py --out harness/runs/rpc-sample-unique.json` to check Mainnet genesis, a finalized slot, and one recent full `getBlock` sample within five read-only requests. The receipt never includes the URL/key. This probes **provider compatibility only**; success does not establish G0 coverage or strategy profitability. Do not paste the RPC URL/key into a prompt or public log. The key is never modified by this tool.
+
+## Profit-first H8 and P&L evaluation
+
+Business objective: **prove repeatable, risk-constrained net trading profit after all fees and realistic execution**, not maximize trade count or win rate. Current H7 synthetic evidence remains `EDGE_NOT_DEMONSTRATED` and S00 NO_TRADE dominates. Read [Profit-First Goal Plan](docs/PROFIT_FIRST_GOAL_PLAN.md) and [Profit-First Agent Mission](harness/docs/PROFIT_FIRST_AGENT_MISSION.md); dispatch `.agents/skills/sniper-pnl-architect/SKILL.md` for every P&L, strategy profitability, or finance report task. The mission is a plan, not implemented P&L V2 code. Retain mainnet read-only and prohibit independent funded agents.
