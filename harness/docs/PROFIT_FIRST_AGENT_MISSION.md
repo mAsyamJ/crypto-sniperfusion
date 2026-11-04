@@ -17,6 +17,10 @@ H8 means propose → measure → independently reconcile net P&L → compare →
 
 Do not rewrite `sniper-strategy`. Inspect H7's `engine::legacy`, `engine::protocol`, `fees`, `oracle`, `eval` and H2 paper broker; map gaps against `PnlRunReceiptV2`. Inspect current HEAD, branches, untracked files and CI; preserve operator work. Consult current official Pump.fun fee schedules, IDLs and Solana priority-fee documentation without copying old constants.
 
+## P0 protocol-economic discrepancy to test first
+
+`crates/sniper-strategy/src/fees.rs::PumpSwapFeeState::canonical_reference()` models a 25-bps reference fee (20 LP + 5 protocol, 0 creator), whereas Pump.fun currently publishes canonical-pool market-cap tiers starting at 125 bps for low caps (https://pump.fun/docs/fees). Inspect whether any Engine B real-data path uses that reference as actual fee truth. Add differential/SVM account-delta tests and real as-of fee_config provenance checks; never silently use static 25 bps for a dynamic canonical pool. Mark affected profitability outputs INCONCLUSIVE until resolved. This is a potential overstatement risk, **not** proof every result is incorrect.
+
 ## Implement in dependency order (not documentation-only)
 
 **PF0/1 — build the actual P&L control plane now.** Define account/valuation schema and real data provenance. Add immutable run receipts, detailed per-trade/strategy performance, gross-to-net fee waterfall, cashflow-normalized start/end NAV, uncertain/unexitable inventory handling, full-portfolio drawdown, paired S00 and delayed-entry comparisons, independent cash/account delta reconciliation and failure audits. If source data is synthetic, label `SYNTHETIC` and make `promotable=false`.
