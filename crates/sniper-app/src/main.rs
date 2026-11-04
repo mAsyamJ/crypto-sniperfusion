@@ -99,6 +99,17 @@ enum Command {
         #[arg(long, value_name = "DIR")]
         out_dir: PathBuf,
     },
+    /// WA3: delayed wallet-follower paper trading with matched S00
+    /// comparison. Offline, deterministic; quotes come ONLY from the
+    /// provided price timeline (never a leader price).
+    WalletFollow {
+        #[arg(long, value_name = "JSONL")]
+        signals: PathBuf,
+        #[arg(long, value_name = "JSONL")]
+        quotes: PathBuf,
+        #[arg(long, value_name = "DIR")]
+        out_dir: PathBuf,
+    },
     /// Live trading. Requires a `live`-feature build plus four runtime gates.
     Live {
         #[arg(long)]
@@ -167,6 +178,11 @@ fn main() -> ExitCode {
             wallet,
             out_dir,
         } => run_wallet_pnl(transactions, wallet, out_dir),
+        Command::WalletFollow {
+            signals,
+            quotes,
+            out_dir,
+        } => run_wallet_follow(signals, quotes, out_dir),
         Command::Live {
             config,
             kill_switch_path,
@@ -621,6 +637,148 @@ fn run_wallet_pnl(
         "unobserved_opening_inventory_events": opening_inventory_events,
         "net_pnl_lamports": net,
         "receipt_sha256": receipt.receipt_sha256,
+        "nonpromotable": true,
+    });
+    Ok(serde_json::to_string_pretty(&summary).unwrap())
+}
+
+/// WA3 delayed follower: signals + a deterministic quote timeline ->
+/// per-delay portfolios (leader price never used) + matched S00 rows.
+fn run_wallet_follow(
+    signals_path: PathBuf,
+    quotes_path: PathBuf,
+    out_dir: PathBuf,
+) -> Result<String, String> {
+    use sniper_strategy::follower::{
+        run_follower, DelayPricer, DelayQuote, FollowerConfig, WalletSignal,
+    };
+    use sniper_strategy::receipt::{build_receipt, write_bundle, ComparisonRow};
+
+    let live = std::env::var("LIVE_TRADING_ENABLED").unwrap_or_default();
+    if !matches!(live.as_str(), "" | "false" | "0") {
+        return Err("wallet-follow refuses LIVE_TRADING_ENABLED".into());
+    }
+    let signals_text = std::fs::read_to_string(&signals_path)
+        .map_err(|e| format!("read {}: {e}", signals_path.display()))?;
+    let mut signals = Vec::new();
+    for (index, line) in signals_text.lines().enumerate() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let signal: WalletSignal =
+            serde_json::from_str(line).map_err(|e| format!("signal line {}: {e}", index + 1))?;
+        signals.push(signal);
+    }
+    let quotes_text = std::fs::read_to_string(&quotes_path)
+        .map_err(|e| format!("read {}: {e}", quotes_path.display()))?;
+    // Quotes JSONL rows: {"mint", "at_ms", "price_lamports_per_token", "exit_liquidity_lamports"}
+    #[derive(serde::Deserialize)]
+    struct QuoteRow {
+        mint: String,
+        at_ms: u64,
+        price_lamports_per_token: u64,
+        exit_liquidity_lamports: u64,
+    }
+    let mut timeline: std::collections::BTreeMap<String, Vec<(u64, u64, u64)>> =
+        std::collections::BTreeMap::new();
+    for (index, line) in quotes_text.lines().enumerate() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let row: QuoteRow =
+            serde_json::from_str(line).map_err(|e| format!("quote line {}: {e}", index + 1))?;
+        timeline.entry(row.mint).or_default().push((
+            row.at_ms,
+            row.price_lamports_per_token,
+            row.exit_liquidity_lamports,
+        ));
+    }
+    for rows in timeline.values_mut() {
+        rows.sort();
+    }
+    struct TimelinePricer(std::collections::BTreeMap<String, Vec<(u64, u64, u64)>>);
+    impl DelayPricer for TimelinePricer {
+        fn quote_at(&self, mint: &str, at_ms: u64) -> Option<DelayQuote> {
+            self.0
+                .get(mint)?
+                .iter()
+                .rev()
+                .find(|(t, _, _)| *t <= at_ms)
+                .map(|(_, p, l)| DelayQuote {
+                    price_lamports_per_token: *p,
+                    exit_liquidity_lamports: *l,
+                })
+        }
+        fn next_quote_at(&self, mint: &str, at_ms: u64) -> Option<u64> {
+            self.0
+                .get(mint)?
+                .iter()
+                .find(|(t, _, _)| *t >= at_ms)
+                .map(|(t, _, _)| *t)
+        }
+    }
+    let pricer = TimelinePricer(timeline);
+    let config = FollowerConfig::default();
+    let runs = run_follower(&signals, &pricer, &config);
+
+    let comparisons: Vec<ComparisonRow> = runs
+        .iter()
+        .map(|run| ComparisonRow {
+            strategy: format!("FOLLOW_DELAY_{}MS", run.delay_ms),
+            net_pnl_lamports: run.net_pnl_lamports,
+            // Matched baseline S00 over the identical signal set is 0 by
+            // definition -> incremental edge equals the follower net.
+            incremental_net_edge_vs_no_trade: run.net_pnl_lamports,
+            max_drawdown_lamports: 0,
+            open_positions: run.open_positions,
+            status: if run.net_pnl_lamports > 0 {
+                "CANDIDATE_FOR_INDEPENDENT_REVIEW"
+            } else {
+                "LOSING"
+            }
+            .into(),
+        })
+        .chain(std::iter::once(ComparisonRow {
+            strategy: "S00".into(),
+            net_pnl_lamports: 0,
+            incremental_net_edge_vs_no_trade: 0,
+            max_drawdown_lamports: 0,
+            open_positions: 0,
+            status: "NO_TRADE_BASELINE".into(),
+        }))
+        .collect();
+    let oracle = sniper_strategy::oracle::AccountingOracle::new(0);
+    let marks = std::collections::HashMap::new();
+    let receipt = build_receipt(
+        "wallet_follower_v1",
+        "SYNTHETIC_OR_OBSERVED_QUOTES",
+        "QUOTES_AS_PROVIDED",
+        "signals+quotes",
+        0,
+        &oracle,
+        &marks,
+        0,
+        0,
+        runs.last().map(|r| r.open_positions).unwrap_or(0),
+        0,
+        comparisons,
+        vec![
+            "follower entries priced ONLY at/after observed+delay from the provided timeline; leader prices never used".into(),
+            "round-trip cost bps 125 = OBSERVED curve fee config (PF0: 95 protocol + 30 creator)".into(),
+            "unquotable exits stay open, marked at zero (conservative)".into(),
+        ],
+    );
+    let runs_json = serde_json::to_string_pretty(&runs).unwrap();
+    let run = write_bundle(&out_dir, &receipt, &runs_json, "", "{}").map_err(|e| e.to_string())?;
+    let summary = serde_json::json!({
+        "out": run.display().to_string(),
+        "signals": signals.len(),
+        "delays": runs.len(),
+        "receipt_sha256": receipt.receipt_sha256,
+        "net_by_delay": runs.iter().map(|r| serde_json::json!({
+            "delay_ms": r.delay_ms, "net": r.net_pnl_lamports,
+            "entries": r.followed_entries, "refused": r.refused_invalid + r.refused_no_quote,
+        })).collect::<Vec<_>>(),
         "nonpromotable": true,
     });
     Ok(serde_json::to_string_pretty(&summary).unwrap())
