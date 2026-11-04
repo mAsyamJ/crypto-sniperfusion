@@ -161,6 +161,42 @@ class Base58(unittest.TestCase):
         self.assertEqual(lcc.b58encode(b"\x00\x00"), "11")
 
 
+class WireParams(unittest.TestCase):
+    """Mission-A regression: the collector MUST request transaction
+    version 1 on getBlock/getTransaction (version 0 made every H6 live
+    manifest fail with UnsupportedTxVersion on versioned blocks)."""
+
+    class _Capture(JsonRpc if False else object):
+        pass
+
+    def _capturing_client(self):
+        import launch_cohort_capture as lcc
+
+        captured = []
+
+        def transport(body):
+            captured.append(body)
+            if body["method"] == "getGenesisHash":
+                return {"result": lcc.MAINNET_GENESIS}
+            if body["method"] == "getSlot":
+                return {"result": 2000}
+            if body["method"] == "getBlock":
+                return {"result": None}
+            return {"result": []}
+
+        client = lcc.JsonRpc(url="https://x", transport=transport)
+        return client, captured
+
+    def test_get_block_and_tx_request_version_1(self):
+        client, captured = self._capturing_client()
+        client.get_block(123)
+        client.get_transaction("Sig")
+        blocks = [b for b in captured if b["method"] == "getBlock"]
+        txs = [b for b in captured if b["method"] == "getTransaction"]
+        self.assertTrue(blocks and blocks[0]["params"][1]["maxSupportedTransactionVersion"] == 1)
+        self.assertTrue(txs and txs[0]["params"][1]["maxSupportedTransactionVersion"] == 1)
+
+
 class HttpTransport(unittest.TestCase):
     def test_http_429_becomes_rate_limited_rpc_error(self):
         client = lcc.JsonRpc(url="https://example.invalid")
@@ -398,6 +434,59 @@ class CaptureFlow(unittest.TestCase):
         self.assertEqual(report["manifest"]["window"]["from_slot"], 998)
         self.assertEqual(report["manifest"]["window"]["to_slot"], 999)
         self.assertEqual(report["blocks_fetched"], 2)
+
+
+class CheckpointResumeBudget(unittest.TestCase):
+    def test_resume_skips_verified_slots_without_duplicate_blocks(self):
+        out = tempfile.mkdtemp(prefix="lcc-ckpt-")
+        ckpt = str(Path(out) / "ckpt.json")
+        blocks = [make_block(100, [make_create_tx("SigA")]),
+                  make_block(101, [make_create_tx("SigB")])]
+        rpc1 = FakeRpc(blocks=blocks, sig_pages=[[{"signature": "SigA", "slot": 100, "err": None},
+                                                  {"signature": "SigB", "slot": 101, "err": None}]],
+                       tip=101)
+        # First run: budget stops after the signature page + first block.
+        lcc.capture(rpc1, 100, 101, out_dir=out, sleep=lambda s: None,
+                    checkpoint=ckpt, max_requests=4)
+        # RPC call order: genesis, slot, sigs(page), block(100) = 4 -> stop
+        first_blocks = [c for c in rpc1.calls if c[0] == "block"]
+        self.assertEqual(first_blocks, [("block", 100)])
+        state = json.loads(Path(ckpt).read_text())
+        self.assertEqual(state["collected_to_slot"], 101)
+        # Resume: genesis+slot+ (no re-fetch of slot 100) + block 101.
+        rpc2 = FakeRpc(blocks=blocks, tip=101)
+        report = lcc.capture(rpc2, 100, 101, out_dir=out, sleep=lambda s: None,
+                             checkpoint=ckpt)
+        second_blocks = [c for c in rpc2.calls if c[0] == "block"]
+        self.assertEqual(second_blocks, [("block", 101)], "resume must not re-fetch verified slots")
+        self.assertEqual(report["coverage_state"], "COMPLETE")
+        self.assertEqual(len(report["creates"]), 2)
+        self.assertTrue(Path(ckpt).exists())
+
+    def test_budget_stop_report_is_blocked_and_resumable(self):
+        out = tempfile.mkdtemp(prefix="lcc-budget-")
+        rpc = FakeRpc(blocks=[make_block(100, [])], tip=100)
+        report = lcc.capture(rpc, 100, 100, out_dir=out, sleep=lambda s: None,
+                             max_requests=2)  # genesis + slot -> stop before any block
+        self.assertEqual(report["status"], "BUDGET_EXHAUSTED_RESUMABLE")
+        self.assertEqual(report["coverage_state"], "INCOMPLETE")
+        stops = list(Path(out).glob("budget-stop-*.json"))
+        self.assertTrue(stops and oct(stops[0].stat().st_mode & 0o777) == oct(0o444))
+
+    def test_rate_limit_backoff_is_exponential_and_capped(self):
+        delays = []
+        def sleep_fn(d):
+            delays.append(d)
+            if len(delays) >= 3:
+                raise KeyboardInterrupt
+        class Always429:
+            def __call__(self):
+                raise lcc.RpcError("HTTP 429", code=429)
+        try:
+            lcc.with_retry(Always429(), retries=5, sleep=sleep_fn, sleep_base=0.5)
+        except KeyboardInterrupt:
+            pass
+        self.assertEqual(delays[:3], [0.5, 1.0, 2.0])
 
 
 class Outputs(unittest.TestCase):

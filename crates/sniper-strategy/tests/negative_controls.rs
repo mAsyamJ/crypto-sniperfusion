@@ -326,6 +326,7 @@ fn control_11_shared_wallet_contention_is_reported() {
         priority_fee_lamports: 5_000,
         tip_lamports: 0,
         rent_lamports: 1_500_000,
+        slippage_lamports: 0,
         fee_synthetic_fallback: false,
     };
     let mut independent = AccountingOracle::new(3_000_000);

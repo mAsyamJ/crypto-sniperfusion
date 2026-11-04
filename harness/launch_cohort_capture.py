@@ -258,11 +258,15 @@ class JsonRpc:
         return self._call("getSlot", [{"commitment": commitment}])
 
     def get_block(self, slot):
+        # Version 1 is REQUIRED for modern blocks containing versioned
+        # (address-lookup-table) transactions — the provider error literally
+        # asks for it, and every failed H6 manifest traces to this param
+        # being 0 (PF/Mission-A root cause).
         return self._call("getBlock", [slot, {
             "encoding": "json",
             "transactionDetails": "full",
             "rewards": False,
-            "maxSupportedTransactionVersion": 0,
+            "maxSupportedTransactionVersion": 1,
         }])
 
     def get_signatures_for_address(self, address, before=None, limit=1000):
@@ -271,15 +275,21 @@ class JsonRpc:
             params[1]["before"] = before
         return self._call("getSignaturesForAddress", params)
 
+    def get_account_info(self, address):
+        return self._call("getAccountInfo", [address, {"encoding": "base64"}])
+
     def get_transaction(self, signature):
         return self._call("getTransaction", [signature, {
             "encoding": "json",
-            "maxSupportedTransactionVersion": 0,
+            "maxSupportedTransactionVersion": 1,
         }])
 
 
-def with_retry(fn, retries, sleep, sleep_base=0.5):
-    """Bounded, deterministic retry: initial attempt + `retries` retries."""
+def with_retry(fn, retries, sleep, sleep_base=0.5, _record=None):
+    """Bounded retry: initial attempt + `retries` retries. Rate-limit
+    failures (429) back off exponentially (base * 2^attempt, capped 8s);
+    other errors use linear backoff. `_record` observes each backoff for
+    tests."""
     attempt = 0
     while True:
         try:
@@ -288,7 +298,11 @@ def with_retry(fn, retries, sleep, sleep_base=0.5):
             if attempt >= retries:
                 raise exc
             attempt += 1
-            sleep(sleep_base * attempt)
+            delay = sleep_base * (2 ** (attempt - 1)) if exc.code == 429 else sleep_base * attempt
+            delay = min(delay, 8.0)
+            if _record is not None:
+                _record(delay)
+            sleep(delay)
 
 
 def write_once(path: Path, text: str):
@@ -301,6 +315,53 @@ def write_once(path: Path, text: str):
     os.chmod(path, 0o444)
 
 
+class BudgetExceeded(Exception):
+    """Request or time budget exhausted; the sweep is resumable via the
+    checkpoint that was saved after the last completed unit of work."""
+
+
+class _BudgetedRpc:
+    """Read-only RPC proxy enforcing request/time budgets (Mission A)."""
+
+    def __init__(self, rpc, max_requests=None, deadline=None):
+        self._rpc = rpc
+        self.max_requests = max_requests
+        self.deadline = deadline
+        self.requests_used = 0
+
+    def _gate(self):
+        if self.deadline is not None and time.monotonic() > self.deadline:
+            raise BudgetExceeded("time budget exhausted")
+        if self.max_requests is not None and self.requests_used >= self.max_requests:
+            raise BudgetExceeded(f"request budget exhausted ({self.max_requests})")
+
+    def __getattr__(self, name):
+        target = getattr(self._rpc, name)
+        if not callable(target):
+            return target
+
+        def wrapped(*args, **kwargs):
+            self._gate()
+            self.requests_used += 1
+            return target(*args, **kwargs)
+
+        return wrapped
+
+
+def _load_checkpoint(path):
+    if path is None or not Path(path).exists():
+        return None
+    return json.loads(Path(path).read_text())
+
+
+def _save_checkpoint(path, state):
+    if path is None:
+        return
+    tmp = Path(path).with_suffix(".tmp")
+    tmp.write_text(json.dumps(state, sort_keys=True))
+    tmp.replace(path)
+
+
 def _validate_window(from_slot, to_slot):
     if from_slot < 1 or to_slot < from_slot:
         raise ValueError(f"invalid window [{from_slot}, {to_slot}]")
@@ -311,8 +372,38 @@ def _validate_window(from_slot, to_slot):
 
 
 def _capture_window(rpc, genesis, from_slot, to_slot, out_dir, *, max_pages,
-                    retries, sleep, sleep_base):
-    """Collection core for an already-validated window (identity checked)."""
+                    retries, sleep, sleep_base, checkpoint=None,
+                    max_requests=None, time_budget_s=None):
+    """Collection core for an already-validated window (identity checked).
+
+    Mission-A hardening: explicit request/time budgets and a resumable
+    checkpoint (window progress, verified slots, in-window signatures,
+    page cursor, request count). A budget stop raises BudgetExceeded AFTER
+    saving the checkpoint — the run is resumable, never silently complete.
+    """
+    state = _load_checkpoint(checkpoint) or {
+        "window": [from_slot, to_slot],
+        "verified_blocks": [],
+        "in_window_sigs": [],
+        "block_sigs": [],
+        "creates": [],
+        "gaps": [],
+        "pages_fetched": 0,
+        "page_cursor": None,
+        "requests_used": 0,
+        "collected_to_slot": from_slot,
+        "done": False,
+    }
+    if state["window"] != [from_slot, to_slot]:
+        raise ValueError("checkpoint window mismatch; use a fresh checkpoint path")
+    deadline = time.monotonic() + time_budget_s if time_budget_s else None
+    rpc = _BudgetedRpc(rpc, max_requests=max_requests, deadline=deadline)
+    rpc.requests_used = state["requests_used"]
+    from_slot_s, to_slot_s = state["window"]
+
+    def save():
+        state["requests_used"] = rpc.requests_used
+        _save_checkpoint(checkpoint, state)
     tip = rpc.get_slot()
     right_censored = None
     collect_to = to_slot
@@ -325,15 +416,16 @@ def _capture_window(rpc, genesis, from_slot, to_slot, out_dir, *, max_pages,
     if from_slot > tip:
         right_censored = right_censored or f"window starts past tip ({from_slot} > {tip})"
 
-    gaps = []
+    gaps = list(state["gaps"])
 
     # --- signature sweep (candidate discovery only; NEVER a completeness proof)
-    in_window_sigs = set()
-    cursor = None
-    pages_fetched = 0
-    for _ in range(max_pages):
+    in_window_sigs = set(state["in_window_sigs"])
+    cursor = state["page_cursor"]
+    pages_fetched = state["pages_fetched"]
+    for _ in range(max_pages - pages_fetched if pages_fetched < max_pages else 0):
         page = rpc.get_signatures_for_address(PUMP_PROGRAM_ID, before=cursor)
         pages_fetched += 1
+        state["pages_fetched"] = pages_fetched
         if not page:
             break
         oldest = None
@@ -343,16 +435,20 @@ def _capture_window(rpc, genesis, from_slot, to_slot, out_dir, *, max_pages,
             if from_slot <= slot <= collect_to:
                 in_window_sigs.add(sig)
             oldest = item
+        state["in_window_sigs"] = sorted(in_window_sigs)
+        save()
         if oldest is None or (oldest.get("slot") or 0) < from_slot:
             break
         cursor = oldest["signature"]
+        state["page_cursor"] = cursor
 
-    # --- block sweep (the only completeness evidence)
-    creates = []
-    verified_blocks = []
-    block_sigs = set()
+    # --- block sweep (the only completeness evidence); resumable
+    creates = list(state["creates"])
+    verified_blocks = list(state["verified_blocks"])
+    block_sigs = set(state["block_sigs"])
     failed_transactions = 0
-    for slot in range(from_slot, collect_to + 1):
+    next_slot = max(state["collected_to_slot"], from_slot)
+    for slot in range(next_slot, collect_to + 1):
         try:
             block = with_retry(lambda s=slot: rpc.get_block(s), retries, sleep, sleep_base)
         except RpcError as exc:
@@ -363,8 +459,13 @@ def _capture_window(rpc, genesis, from_slot, to_slot, out_dir, *, max_pages,
         if block is None:
             gaps.append({"kind": "ProviderUnavailable", "slot": slot,
                          "evidence": "getBlock returned null (skipped or unavailable)"})
+            state["gaps"] = gaps
+            state["collected_to_slot"] = slot + 1
+            save()
             continue
         verified_blocks.append(slot)
+        state["verified_blocks"] = verified_blocks
+        state["collected_to_slot"] = slot + 1
         for tx_index, tx in enumerate(block.get("transactions") or []):
             sig = tx["transaction"]["signatures"][0]
             block_sigs.add(sig)
@@ -385,6 +486,11 @@ def _capture_window(rpc, genesis, from_slot, to_slot, out_dir, *, max_pages,
                     "block_evidence": True,
                 })
                 creates.append(record)
+        # Persist AFTER enumeration so this block's signatures and creates
+        # survive a budget stop immediately following it.
+        state["block_sigs"] = sorted(block_sigs)
+        state["creates"] = creates
+        save()
 
     # --- reconciliation: feed signatures vs block evidence
     signatures_without_block_evidence = []
@@ -420,6 +526,8 @@ def _capture_window(rpc, genesis, from_slot, to_slot, out_dir, *, max_pages,
             })
             creates.append(record)
 
+    state["done"] = True
+    save()
     if not verified_blocks and not creates and not in_window_sigs:
         coverage_state = "UNKNOWN"
     elif right_censored:
@@ -496,17 +604,40 @@ def _checked_identity(rpc):
 
 
 def capture(rpc, from_slot, to_slot, out_dir, *, max_pages=20, retries=3,
-            sleep=time.sleep, sleep_base=0.5):
+            sleep=time.sleep, sleep_base=0.5, checkpoint=None,
+            max_requests=None, time_budget_s=None):
     """Explicit-window capture: the caller names the slot interval."""
     genesis = _checked_identity(rpc)
     _validate_window(from_slot, to_slot)
-    return _capture_window(rpc, genesis, from_slot, to_slot, out_dir,
-                           max_pages=max_pages, retries=retries,
-                           sleep=sleep, sleep_base=sleep_base)
+    try:
+        return _capture_window(rpc, genesis, from_slot, to_slot, out_dir,
+                               max_pages=max_pages, retries=retries,
+                               sleep=sleep, sleep_base=sleep_base,
+                               checkpoint=checkpoint, max_requests=max_requests,
+                               time_budget_s=time_budget_s)
+    except BudgetExceeded as exc:
+        return _budget_stop_report(from_slot, to_slot, out_dir, str(exc))
+
+
+def _budget_stop_report(from_slot, to_slot, out_dir, reason):
+    """Honest partial report on a budget stop: BLOCKED, resumable."""
+    path = Path(out_dir) / f"budget-stop-{time.strftime('%Y%m%dT%H%M%S', time.gmtime())}-{os.getpid()}.json"
+    report = {
+        "status": "BUDGET_EXHAUSTED_RESUMABLE",
+        "coverage_state": "INCOMPLETE",
+        "reason": reason,
+        "window": [from_slot, to_slot],
+        "nonpromotable": True,
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
+    os.chmod(path, 0o444)
+    return report
 
 
 def capture_recent_slots(rpc, lookback_slots, out_dir, *, max_pages=20, retries=3,
-                         sleep=time.sleep, sleep_base=0.5):
+                         sleep=time.sleep, sleep_base=0.5, checkpoint=None,
+                         max_requests=None, time_budget_s=None):
     """Tip-relative capture: window = [tip - lookback, tip] with the tip
     fetched immediately before the sweep, avoiding the stale-window race
     when high program throughput makes a pre-computed window drift out of
@@ -516,9 +647,14 @@ def capture_recent_slots(rpc, lookback_slots, out_dir, *, max_pages=20, retries=
     genesis = _checked_identity(rpc)
     tip = rpc.get_slot()
     from_slot = tip - lookback_slots
-    return _capture_window(rpc, genesis, from_slot, tip, out_dir,
-                           max_pages=max_pages, retries=retries,
-                           sleep=sleep, sleep_base=sleep_base)
+    try:
+        return _capture_window(rpc, genesis, from_slot, tip, out_dir,
+                               max_pages=max_pages, retries=retries,
+                               sleep=sleep, sleep_base=sleep_base,
+                               checkpoint=checkpoint, max_requests=max_requests,
+                               time_budget_s=time_budget_s)
+    except BudgetExceeded as exc:
+        return _budget_stop_report(from_slot, tip, out_dir, str(exc))
 
 
 def main(argv=None):
@@ -532,16 +668,26 @@ def main(argv=None):
     parser.add_argument("--out-dir", default="harness/runs/launch-cohort")
     parser.add_argument("--max-pages", type=int, default=20)
     parser.add_argument("--retries", type=int, default=3)
+    parser.add_argument("--checkpoint", default=None,
+                        help="resumable progress file (mutable working state, not evidence)")
+    parser.add_argument("--max-requests", type=int, default=None)
+    parser.add_argument("--time-budget-seconds", type=float, default=None)
     args = parser.parse_args(argv)
     rpc = JsonRpc(url=args.url)
     if args.recent_slots is not None:
         report = capture_recent_slots(rpc, args.recent_slots, args.out_dir,
-                                      max_pages=args.max_pages, retries=args.retries)
+                                      max_pages=args.max_pages, retries=args.retries,
+                                      checkpoint=args.checkpoint,
+                                      max_requests=args.max_requests,
+                                      time_budget_s=args.time_budget_seconds)
     else:
         if args.to_slot is None:
             parser.error("--from-slot requires --to-slot")
         report = capture(rpc, args.from_slot, args.to_slot, args.out_dir,
-                         max_pages=args.max_pages, retries=args.retries)
+                         max_pages=args.max_pages, retries=args.retries,
+                         checkpoint=args.checkpoint,
+                         max_requests=args.max_requests,
+                         time_budget_s=args.time_budget_seconds)
     summary = {k: report[k] for k in ("coverage_state", "blocks_fetched", "pages_fetched",
                                       "raw_path", "manifest_path", "nonpromotable")}
     summary["creates"] = len(report["creates"])

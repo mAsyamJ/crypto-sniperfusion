@@ -30,12 +30,12 @@ def digest(obj):
 def gate_inventory():
     """Explicit distinction: GitHub/source existence is not runtime evidence."""
     return {
-        "G0_full_launch_dataset": "BLOCKED_NOT_IMPLEMENTED",
+        "G0_full_launch_dataset": "BLOCKED_NO_COMPLETE_MAINNET_COHORT",
         "G1_python_gate": "PENDING",
         "G1_rust_ci": "REQUIRES_EXTERNAL_CI_RECEIPT",
-        "G2_execution_faithful_accounting": "NOT_IMPLEMENTED",
+        "G2_execution_faithful_accounting": "RUST_ENGINE_B_IMPLEMENTED_REAL_SNAPSHOTS_NOT_VALIDATED",
         "G3_real_temporal_cluster_oos_alpha": "NOT_DEMONSTRATED",
-        "G4_full_program_fork_parity": "NOT_REVERIFIED_BY_THIS_RUN",
+        "G4_full_program_fork_parity": "M3C_SCOPE_FORK_EXECUTED_NOT_REVERIFIED_BY_THIS_RUN",
         "G5_mainnet_read_only_shadow": "NOT_STARTED",
         "G6_operator_key_and_live_gate_review": "REQUIRES_INDEPENDENT_REVIEW",
         "G7_paper_only_promotion": "DISABLED",
@@ -44,7 +44,7 @@ def gate_inventory():
 
 def plan():
     return {
-        "mission_version": "H5-H8-v1",
+        "mission_version": "H5-H8-v2-evidence-status",
         "source": MASTER_MISSION,
         "safety": "OFFLINE_RESEARCH_ONLY",
         "goal": "After-cost risk-adjusted OOS value relative to NO_TRADE, not guaranteed win rate",
@@ -52,9 +52,9 @@ def plan():
             {"id": "H5", "target": "Test protocol execution on Surfpool/Devnet under operator gate",
              "current": "PILOT_SOURCE_IMPLEMENTED_NO_OPERATOR_TRANSACTION_RECEIPT"},
             {"id": "H6", "target": "Immutable unbiased mainnet read-only launch lifecycle dataset",
-             "current": "SAMPLE_COLLECTOR_ONLY_NO_COMPLETENESS_PROOF"},
+             "current": "BOUNDED_COLLECTOR_CODE_PRESENT_NO_COMPLETE_MAINNET_COHORT"},
             {"id": "H7", "target": "Rust strategy SDK and independent full portfolio accounting/OOS",
-             "current": "PYTHON_SYNTHETIC_SURROGATE_ONLY"},
+             "current": "RUST_STRATEGY_SDK_ENGINES_ORACLE_PRESENT_NO_REAL_MARKET_EDGE"},
             {"id": "H8", "target": "Offline agent council and deterministic paper-only promotion",
              "current": "SKILLS_AND_FINITE_RESEARCH_LOOP_ONLY"},
         ],

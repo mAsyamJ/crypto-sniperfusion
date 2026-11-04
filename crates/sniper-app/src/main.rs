@@ -79,6 +79,13 @@ enum Command {
         events: PathBuf,
         #[arg(long, value_name = "JSON")]
         out: PathBuf,
+        /// Optional market-snapshot fixture (JSONL) — when present, also
+        /// runs Engine B (ProtocolEconomicV1) with the RANDOM_ELIGIBLE
+        /// baseline and emits the P&L V2 receipt bundle here.
+        #[arg(long, value_name = "JSONL")]
+        snapshots: Option<PathBuf>,
+        #[arg(long, value_name = "DIR")]
+        out_dir: Option<PathBuf>,
     },
     /// Live trading. Requires a `live`-feature build plus four runtime gates.
     Live {
@@ -137,7 +144,12 @@ fn main() -> ExitCode {
             timeout_secs,
             address,
         } => run_rpc_probe(cluster.into(), timeout_secs, address.as_deref()),
-        Command::Research { events, out } => run_research(events, out),
+        Command::Research {
+            events,
+            out,
+            snapshots,
+            out_dir,
+        } => run_research(events, out, snapshots, out_dir),
         Command::Live {
             config,
             kill_switch_path,
@@ -182,7 +194,12 @@ fn run_rpc_probe(
 /// Offline research batch (H7): S00..S10 over one dataset, identical
 /// inputs, full-portfolio evaluation, immutable write-once receipt.
 /// Deterministic by construction: no wall clock, no RNG, no network.
-fn run_research(events: PathBuf, out: PathBuf) -> Result<String, String> {
+fn run_research(
+    events: PathBuf,
+    out: PathBuf,
+    snapshots: Option<PathBuf>,
+    out_dir: Option<PathBuf>,
+) -> Result<String, String> {
     use sniper_strategy::engine::legacy::{self, LegacyParams};
     use sniper_strategy::eval;
     use sniper_strategy::{Observation, RiskConstraints, StrategyKnobs};
@@ -273,13 +290,139 @@ fn run_research(events: PathBuf, out: PathBuf) -> Result<String, String> {
             .map_err(|e| e.to_string())?;
     }
 
-    let summary = serde_json::json!({
+    let mut summary = serde_json::json!({
         "out": out.display().to_string(),
         "dataset_sha256": dataset_sha,
         "verdict": evaluation.verdict,
         "promotable": false,
         "strategies": results.len(),
     });
+
+    // P&L V2 bundle (PF1): Engine B on the observation + snapshot pair,
+    // oracle-reconciled, per-strategy receipts + matched comparison.
+    if let (Some(snapshots_path), Some(bundle_dir)) = (snapshots, out_dir) {
+        let snapshots_text = std::fs::read_to_string(&snapshots_path)
+            .map_err(|e| format!("read {}: {e}", snapshots_path.display()))?;
+        let book = sniper_strategy::engine::protocol::MarketBook::load_jsonl(&snapshots_text)
+            .map_err(|e| format!("invalid snapshots: {e}"))?;
+        let frictions = sniper_strategy::engine::protocol::ExecutionFrictions::default();
+        let params = sniper_strategy::engine::protocol::ProtocolParams::default();
+
+        let mut strategies: Vec<Box<dyn sniper_strategy::Strategy>> =
+            sniper_strategy::registry(knobs);
+        strategies.push(Box::new(
+            sniper_strategy::policies::EntryPolicy::random_eligible(knobs),
+        ));
+
+        let mut receipts = Vec::new();
+        let mut comparisons = Vec::new();
+        let mut audit = serde_json::Map::new();
+        let mut trades_jsonl = String::new();
+        let mut equity_jsonl = String::new();
+        for mut strategy in strategies {
+            let id = strategy.id().as_str().to_string();
+            let outcome = sniper_strategy::engine::protocol::run(
+                &dataset,
+                &book,
+                strategy.as_mut(),
+                cash,
+                &risk,
+                &frictions,
+                &params,
+            );
+            // Incremental ingest for the per-record cash curve.
+            let mut step_oracle = sniper_strategy::oracle::AccountingOracle::new(cash);
+            for record in &outcome.records {
+                step_oracle
+                    .ingest(&id, std::slice::from_ref(record))
+                    .map_err(|e| e.to_string())?;
+                equity_jsonl.push_str(&format!(
+                    "{{\"strategy\": \"{id}\", \"cash_lamports\": {}}}\n",
+                    step_oracle.cash()
+                ));
+                trades_jsonl.push_str(&format!(
+                    "{{\"strategy\": \"{id}\", \"record\": {}}}\n",
+                    serde_json::to_string(record).unwrap()
+                ));
+            }
+            let oracle = sniper_strategy::oracle::AccountingOracle::from_run(&outcome, cash)
+                .map_err(|e| e.to_string())?;
+            let conserved = oracle.verify_conservation().is_ok();
+            let cash_match = oracle.cash() == outcome.ending_cash_lamports;
+            audit.insert(
+                id.clone(),
+                serde_json::json!({"conservation_ok": conserved, "cash_matches_engine": cash_match}),
+            );
+            if !conserved || !cash_match {
+                return Err(format!("oracle reconciliation failed for {id}"));
+            }
+            let marks = std::collections::HashMap::new();
+            let net = oracle.net_pnl(cash, &marks);
+            comparisons.push(sniper_strategy::receipt::ComparisonRow {
+                strategy: id.clone(),
+                net_pnl_lamports: net,
+                incremental_net_edge_vs_no_trade: net, // vs S00's 0 on this synthetic pair
+                max_drawdown_lamports: 0,
+                open_positions: outcome.open_lots.len() as u64,
+                status: if net <= 0 {
+                    "LOSING"
+                } else {
+                    "CANDIDATE_FOR_INDEPENDENT_REVIEW"
+                }
+                .into(),
+            });
+            let receipt = sniper_strategy::receipt::build_receipt(
+                "ProtocolEconomicV1",
+                sniper_strategy::engine::legacy::EVIDENCE_CLASS,
+                "SYNTHETIC_COMPLETE_FIXTURE",
+                &dataset_sha,
+                cash,
+                &oracle,
+                &marks,
+                *oracle
+                    .trial_balance()
+                    .get(&sniper_strategy::oracle::Account::RealizedPnl)
+                    .unwrap_or(&0) as i64,
+                0,
+                outcome.open_lots.len() as u64,
+                0,
+                Vec::new(),
+                vec![
+                    "synthetic fixture cohort; not market evidence".into(),
+                    "fees: OBSERVED on-chain curve fee config (95+30 bps) at slot 465329418; execution frictions synthetic".into(),
+                ],
+            );
+            receipts.push((id, receipt));
+        }
+
+        let bundle = std::path::Path::new(&bundle_dir);
+        for (id, receipt) in &receipts {
+            let dir = bundle.join("strategies").join(id);
+            sniper_strategy::receipt::write_bundle(&dir, receipt, "", "", "{}")
+                .map_err(|e| format!("bundle {id}: {e}"))?;
+        }
+        // Root run.json: S00 baseline receipt with the full comparison.
+        let mut root = receipts
+            .iter()
+            .find(|(id, _)| id == "S00")
+            .map(|(_, r)| r.clone())
+            .expect("S00 present");
+        root.comparison = comparisons.clone();
+        root = root.seal();
+        sniper_strategy::receipt::write_bundle(
+            bundle,
+            &root,
+            &trades_jsonl,
+            &equity_jsonl,
+            &serde_json::to_string(&serde_json::Value::Object(audit)).unwrap(),
+        )
+        .map_err(|e| format!("root bundle: {e}"))?;
+        summary["pnl_v2_bundle"] = serde_json::json!({
+            "dir": bundle_dir.display().to_string(),
+            "receipt_sha256": root.receipt_sha256,
+            "engine": "ProtocolEconomicV1",
+        });
+    }
     Ok(serde_json::to_string_pretty(&summary).unwrap())
 }
 

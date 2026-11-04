@@ -89,6 +89,21 @@ impl MarketBook {
             .rev()
             .find(|s| s.slot <= slot)
     }
+
+    /// Load from a JSONL file of `MarketSnapshot` records (fixture or
+    /// H6-collected data). Invalid lines are a hard error — never skipped.
+    pub fn load_jsonl(text: &str) -> Result<Self, String> {
+        let mut book = Self::new();
+        for (index, line) in text.lines().enumerate() {
+            if line.trim().is_empty() {
+                continue;
+            }
+            let snapshot: MarketSnapshot = serde_json::from_str(line)
+                .map_err(|e| format!("snapshot line {}: {e}", index + 1))?;
+            book.push(snapshot);
+        }
+        Ok(book)
+    }
 }
 
 /// Deterministic execution frictions (scenario input, never hidden state).
@@ -138,6 +153,7 @@ pub enum ExecutionRecord {
         priority_fee_lamports: u64,
         tip_lamports: u64,
         rent_lamports: u64,
+        slippage_lamports: u64,
         fee_synthetic_fallback: bool,
     },
     SellFill {
@@ -153,6 +169,7 @@ pub enum ExecutionRecord {
         priority_fee_lamports: u64,
         tip_lamports: u64,
         rent_recovered_lamports: u64,
+        slippage_lamports: u64,
         fee_synthetic_fallback: bool,
     },
     /// Entry attempt refused before any cash moved.
@@ -422,10 +439,14 @@ fn buy(
                 apply_fee_in(spend, fee_bps).map_err(|_| RejectionReason::InvalidReserves)?;
             let tokens = curve_buy_out(effective, *virtual_token_reserves, *virtual_quote_reserves)
                 .map_err(|_| RejectionReason::InvalidReserves)?;
+            // Exact component split of the withheld input fee (PF0 CE-5).
+            let withheld = spend - effective;
+            let total = u64::from(fee_bps);
+            let split = |bps: u64| (withheld * bps).checked_div(total).unwrap_or(0);
             FillBreakdown {
                 tokens_out: tokens,
-                protocol_fee: spend - effective, // fee taken from the input
-                creator_fee: 0,                  // component split carried via bps in fee state
+                protocol_fee: split(resolved.protocol_bps),
+                creator_fee: split(resolved.creator_bps),
                 lp_fee: 0,
                 synthetic_fallback: resolved.synthetic_fallback,
             }
@@ -434,6 +455,7 @@ fn buy(
             base_reserves,
             pool_quote_vault_amount,
             virtual_quote_reserves,
+            base_mint_supply,
             fee,
             ..
         } => {
@@ -443,26 +465,46 @@ fn buy(
             let effective_quote =
                 effective_quote_reserves(*pool_quote_vault_amount, *virtual_quote_reserves)
                     .map_err(|_| RejectionReason::InvalidReserves)?;
-            let fee_bps = fee.total_bps() as u16;
+            // Canonical pools are market-cap TIERED (observed FeeConfig):
+            // resolve the actual components at this pool's cap.
+            let market_cap = crate::fees::pool_market_cap(
+                *base_mint_supply,
+                u128::from(*base_reserves),
+                u128::from(effective_quote),
+            )
+            .ok_or(RejectionReason::InvalidReserves)?;
+            let resolved = fee.resolve(market_cap);
+            let fee_bps =
+                (resolved.lp_fee_bps + resolved.protocol_bps + resolved.creator_bps) as u16;
             let spend_effective =
                 apply_fee_in(spend, fee_bps).map_err(|_| RejectionReason::InvalidReserves)?;
             let tokens = amm_sell_quote_buy(spend_effective, *base_reserves, effective_quote)
                 .map_err(|_| RejectionReason::InvalidReserves)?;
+            // Exact component split of the withheld input fee (no independent
+            // recomputation -> no rounding drift; PF0 CE-5).
+            let withheld = spend - spend_effective;
+            let total = u64::from(fee_bps);
+            let split = |bps: u64| (withheld * bps).checked_div(total).unwrap_or(0);
             FillBreakdown {
                 tokens_out: tokens,
-                protocol_fee: spend - spend_effective,
-                creator_fee: fee.coin_creator_bps.saturating_mul(spend) / 10_000,
-                lp_fee: 0,
-                synthetic_fallback: false,
+                protocol_fee: split(resolved.protocol_bps),
+                creator_fee: split(resolved.creator_bps),
+                lp_fee: split(resolved.lp_fee_bps),
+                synthetic_fallback: resolved.synthetic_fallback,
             }
         }
     };
-    // Adverse slippage on the token output (deterministic, conservative).
+    // Adverse slippage on the token output (deterministic, conservative);
+    // recorded in quote-equivalent for the waterfall (PF1).
     let slipped = apply_fee_in(fill.tokens_out, frictions.slippage_bps as u16)
         .map_err(|_| RejectionReason::InvalidReserves)?;
     if slipped == 0 {
         return Err(RejectionReason::EmptyOutput);
     }
+    let slip_quote = ((spend - fill.protocol_fee - fill.creator_fee - fill.lp_fee)
+        * (fill.tokens_out - slipped))
+        .checked_div(fill.tokens_out)
+        .unwrap_or(0);
     Ok(ExecutionRecord::BuyFill {
         event_id: event.event_id.clone(),
         mint: mint.to_string(),
@@ -476,6 +518,7 @@ fn buy(
         priority_fee_lamports: frictions.priority_fee_lamports,
         tip_lamports: frictions.tip_lamports,
         rent_lamports: rent,
+        slippage_lamports: slip_quote,
         fee_synthetic_fallback: fill.synthetic_fallback,
     })
 }
@@ -540,27 +583,34 @@ fn sell(
             let fee_bps = (resolved.protocol_bps + resolved.creator_bps) as u16;
             let net = apply_fee_in(gross, fee_bps).map_err(|_| RejectionReason::InvalidReserves)?;
             // Adverse slippage on the quote output, then network costs.
+            let net_before_slip = net;
             let net = apply_fee_in(net, frictions.slippage_bps as u16)
                 .map_err(|_| RejectionReason::InvalidReserves)?;
+            let slip_quote = net_before_slip - net;
             let net = net.saturating_sub(
                 frictions.base_network_fee_lamports + frictions.priority_fee_lamports,
             );
             if net == 0 {
                 return Err(RejectionReason::EmptyOutput);
             }
+            // Exact component split of the withheld output fee (PF0 CE-5).
+            let withheld = gross - apply_fee_in(gross, fee_bps).unwrap_or(gross);
+            let total = u64::from(fee_bps);
+            let split = |bps: u64| (withheld * bps).checked_div(total).unwrap_or(0);
             Ok(ExecutionRecord::SellFill {
                 event_id: event.event_id.clone(),
                 mint: mint.to_string(),
                 slot: exec_slot,
                 tokens_in: tokens,
                 quote_out_net: net,
-                protocol_fee_lamports: gross - (gross * (10_000 - fee_bps as u64) / 10_000),
-                creator_fee_lamports: 0,
+                protocol_fee_lamports: split(resolved.protocol_bps),
+                creator_fee_lamports: split(resolved.creator_bps),
                 lp_fee_lamports: 0,
                 network_fee_lamports: frictions.base_network_fee_lamports,
                 priority_fee_lamports: frictions.priority_fee_lamports,
                 tip_lamports: 0,
                 rent_recovered_lamports: rent_recovered,
+                slippage_lamports: slip_quote,
                 fee_synthetic_fallback: resolved.synthetic_fallback,
             })
         }
@@ -568,38 +618,54 @@ fn sell(
             base_reserves,
             pool_quote_vault_amount,
             virtual_quote_reserves,
+            base_mint_supply,
             fee,
             ..
         } => {
             let effective_quote =
                 effective_quote_reserves(*pool_quote_vault_amount, *virtual_quote_reserves)
                     .map_err(|_| RejectionReason::InvalidReserves)?;
+            let market_cap = crate::fees::pool_market_cap(
+                *base_mint_supply,
+                u128::from(*base_reserves),
+                u128::from(effective_quote),
+            )
+            .ok_or(RejectionReason::InvalidReserves)?;
+            let resolved = fee.resolve(market_cap);
             let gross = amm_sell_out(tokens, *base_reserves, effective_quote)
                 .map_err(|_| RejectionReason::InvalidReserves)?;
-            let fee_bps = fee.total_bps() as u16;
+            let fee_bps =
+                (resolved.lp_fee_bps + resolved.protocol_bps + resolved.creator_bps) as u16;
             let net = apply_fee_in(gross, fee_bps).map_err(|_| RejectionReason::InvalidReserves)?;
+            let net_before_slip = net;
             let net = apply_fee_in(net, frictions.slippage_bps as u16)
                 .map_err(|_| RejectionReason::InvalidReserves)?;
+            let slip_quote = net_before_slip - net;
             let net = net.saturating_sub(
                 frictions.base_network_fee_lamports + frictions.priority_fee_lamports,
             );
             if net == 0 {
                 return Err(RejectionReason::EmptyOutput);
             }
+            // Exact component split of the withheld output fee.
+            let withheld = gross - apply_fee_in(gross, fee_bps).unwrap_or(gross);
+            let total = u64::from(fee_bps);
+            let split = |bps: u64| (withheld * bps).checked_div(total).unwrap_or(0);
             Ok(ExecutionRecord::SellFill {
                 event_id: event.event_id.clone(),
                 mint: mint.to_string(),
                 slot: exec_slot,
                 tokens_in: tokens,
                 quote_out_net: net,
-                protocol_fee_lamports: gross * fee.protocol_bps / 10_000,
-                creator_fee_lamports: (gross * fee.coin_creator_bps) / 10_000,
-                lp_fee_lamports: gross * fee.lp_bps / 10_000,
+                protocol_fee_lamports: split(resolved.protocol_bps),
+                creator_fee_lamports: split(resolved.creator_bps),
+                lp_fee_lamports: split(resolved.lp_fee_bps),
                 network_fee_lamports: frictions.base_network_fee_lamports,
                 priority_fee_lamports: frictions.priority_fee_lamports,
                 tip_lamports: 0,
                 rent_recovered_lamports: rent_recovered,
-                fee_synthetic_fallback: false,
+                slippage_lamports: slip_quote,
+                fee_synthetic_fallback: resolved.synthetic_fallback,
             })
         }
     }

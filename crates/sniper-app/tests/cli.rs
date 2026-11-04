@@ -296,3 +296,68 @@ fn research_receipt_is_bit_identical_across_runs() {
     let b = std::fs::read_to_string(&outs[1]).unwrap();
     assert_eq!(a, b, "receipts must be bit-identical for identical inputs");
 }
+
+#[test]
+fn research_emits_pnl_v2_bundle_with_oracle_reconciliation() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = repo_fixture("");
+    let events = root.join("harness/fixtures/research/synthetic_lifecycle.jsonl");
+    let snapshots = root.join("harness/fixtures/research/synthetic_market_snapshots.jsonl");
+    if !events.exists() || !snapshots.exists() {
+        return;
+    }
+    let bundle = dir.path().join("bundle");
+    let status = Command::new(bin())
+        .arg("research")
+        .arg("--events")
+        .arg(&events)
+        .arg("--out")
+        .arg(dir.path().join("receipt.json"))
+        .arg("--snapshots")
+        .arg(&snapshots)
+        .arg("--out-dir")
+        .arg(&bundle)
+        .env("LIVE_TRADING_ENABLED", "false")
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let run: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(bundle.join("run.json")).unwrap()).unwrap();
+    assert_eq!(run["schema_version"], 2);
+    assert_eq!(run["promotable"], false);
+    assert_eq!(run["engine"], "ProtocolEconomicV1");
+    assert_eq!(run["proof_state"], "SYNTHETIC");
+    assert_eq!(run["verdict"], "EDGE_NOT_DEMONSTRATED");
+    // S00 baseline net 0 and every strategy <= 0 on this cohort.
+    let rows = run["comparison"].as_array().unwrap();
+    assert!(rows.len() >= 11);
+    for row in rows {
+        assert!(row["net_pnl_lamports"].as_i64().unwrap() <= 0);
+    }
+    // Audit gate: every strategy reconciled.
+    let audit: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(bundle.join("audit.json")).unwrap()).unwrap();
+    for (_, v) in audit.as_object().unwrap() {
+        assert_eq!(v["conservation_ok"], true);
+        assert_eq!(v["cash_matches_engine"], true);
+    }
+    // Determinism: same inputs -> identical receipt hash.
+    let bundle2 = dir.path().join("bundle2");
+    let status = Command::new(bin())
+        .arg("research")
+        .arg("--events")
+        .arg(&events)
+        .arg("--out")
+        .arg(dir.path().join("receipt2.json"))
+        .arg("--snapshots")
+        .arg(&snapshots)
+        .arg("--out-dir")
+        .arg(&bundle2)
+        .env("LIVE_TRADING_ENABLED", "false")
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let run2: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(bundle2.join("run.json")).unwrap()).unwrap();
+    assert_eq!(run["receipt_sha256"], run2["receipt_sha256"]);
+}

@@ -17,6 +17,7 @@ thiserror.workspace = true
 # reserves, fee application) — the same math the protocol builders and
 # fork tests use. No network, clock, or signing surface enters via this dep.
 sniper-protocols.workspace = true
+sha2.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

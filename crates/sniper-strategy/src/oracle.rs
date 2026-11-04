@@ -51,6 +51,48 @@ pub enum Account {
     UnresolvedHolds,
     /// External liabilities (zero unless explicitly posted).
     Liabilities,
+    /// Owner top-ups — excluded from trading P&L (credit-natured).
+    ExternalDeposits,
+    /// Owner withdrawals — excluded from trading P&L (debit-natured).
+    ExternalWithdrawals,
+}
+
+/// Fee attribution line for REPORTING (the gross-to-net waterfall). These
+/// are side-ledger records only: where a fee is already inside a net cash
+/// movement (sell-side venue fees, slippage), it appears here and NEVER as
+/// a second ledger entry against Cash — the PF0 CE-1 invariant.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FeeLine {
+    pub tick: u64,
+    pub strategy: String,
+    pub kind: FeeKind,
+    pub amount: u64,
+    pub memo: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd, Serialize, Deserialize)]
+pub enum FeeKind {
+    Protocol,
+    Creator,
+    Lp,
+    Network,
+    Priority,
+    Tip,
+    RentLocked,
+    RentRecovered,
+    RentWrittenOff,
+    Slippage,
+}
+
+/// Per-strategy attribution summary (derived; see `attributed`).
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct StrategyAttribution {
+    pub strategy: String,
+    pub cash_delta: i64,
+    pub realized_pnl: i64,
+    #[serde(default)]
+    pub fees_by_kind: std::collections::BTreeMap<FeeKind, u64>,
+    pub fills: u64,
 }
 
 /// One balanced double-entry: debit and credit for the same amount.
@@ -125,6 +167,7 @@ fn is_debit_natured(account: &Account) -> bool {
             | Account::PriorityFees
             | Account::Tips
             | Account::RentExpense
+            | Account::ExternalWithdrawals
     )
 }
 
@@ -142,6 +185,8 @@ pub struct AccountingOracle {
     lots: HashMap<String, Vec<Lot>>,
     /// Rent parked per mint (recoverable on close).
     rent_parked: HashMap<String, u64>,
+    /// Reporting-only fee attribution lines (waterfall source).
+    fee_lines: Vec<FeeLine>,
     tick: u64,
 }
 
@@ -154,6 +199,7 @@ impl AccountingOracle {
             balances: HashMap::new(),
             lots: HashMap::new(),
             rent_parked: HashMap::new(),
+            fee_lines: Vec::new(),
             tick: 0,
         };
         oracle
@@ -274,6 +320,7 @@ impl AccountingOracle {
             priority_fee_lamports,
             tip_lamports,
             rent_lamports,
+            slippage_lamports,
             ..
         } = record
         else {
@@ -294,6 +341,26 @@ impl AccountingOracle {
             amount: basis,
             memo: format!("buy {event_id}"),
         })?;
+        let fee_kinds = [
+            (FeeKind::Protocol, *protocol_fee_lamports),
+            (FeeKind::Creator, *creator_fee_lamports),
+            (FeeKind::Lp, *lp_fee_lamports),
+            (FeeKind::Network, *network_fee_lamports),
+            (FeeKind::Priority, *priority_fee_lamports),
+            (FeeKind::Tip, *tip_lamports),
+            (FeeKind::Slippage, *slippage_lamports),
+        ];
+        for (kind, amount) in fee_kinds {
+            if amount > 0 {
+                self.fee_lines.push(FeeLine {
+                    tick: self.tick,
+                    strategy: strategy.into(),
+                    kind,
+                    amount,
+                    memo: format!("buy {event_id}"),
+                });
+            }
+        }
         for (account, amount) in [
             (Account::ProtocolFees, *protocol_fee_lamports),
             (Account::CreatorFees, *creator_fee_lamports),
@@ -326,6 +393,13 @@ impl AccountingOracle {
                 .entry(mint.clone())
                 .and_modify(|r| *r += rent_lamports)
                 .or_insert(*rent_lamports);
+            self.fee_lines.push(FeeLine {
+                tick: self.tick,
+                strategy: strategy.into(),
+                kind: FeeKind::RentLocked,
+                amount: *rent_lamports,
+                memo: format!("ATA rent {event_id}"),
+            });
         }
         let lots = self.lots.entry(mint.clone()).or_default();
         lots.push(Lot {
@@ -350,7 +424,10 @@ impl AccountingOracle {
             protocol_fee_lamports,
             creator_fee_lamports,
             lp_fee_lamports,
+            network_fee_lamports,
+            priority_fee_lamports,
             rent_recovered_lamports,
+            slippage_lamports,
             ..
         } = record
         else {
@@ -420,20 +497,26 @@ impl AccountingOracle {
                 memo: format!("sell loss {event_id}"),
             })?;
         }
-        for (account, amount) in [
-            (Account::ProtocolFees, *protocol_fee_lamports),
-            (Account::CreatorFees, *creator_fee_lamports),
-            (Account::LpFees, *lp_fee_lamports),
+        // PF0 CE-1 fix: the engine's quote_out_net is ALREADY net of venue
+        // fees (and slippage + network costs), so the ledger must NOT debit
+        // fee accounts against Cash a second time. Fee components are
+        // recorded as reporting-only attribution lines for the waterfall.
+        for (kind, amount) in [
+            (FeeKind::Protocol, *protocol_fee_lamports),
+            (FeeKind::Creator, *creator_fee_lamports),
+            (FeeKind::Lp, *lp_fee_lamports),
+            (FeeKind::Network, *network_fee_lamports),
+            (FeeKind::Priority, *priority_fee_lamports),
+            (FeeKind::Slippage, *slippage_lamports),
         ] {
             if amount > 0 {
-                self.post(LedgerEntry {
+                self.fee_lines.push(FeeLine {
                     tick: self.tick,
                     strategy: strategy.into(),
-                    debit: account,
-                    credit: Account::Cash,
+                    kind,
                     amount,
-                    memo: format!("sell costs {event_id}"),
-                })?;
+                    memo: format!("sell {event_id} (already net in proceeds)"),
+                });
             }
         }
         if *rent_recovered_lamports > 0 {
@@ -485,9 +568,17 @@ impl AccountingOracle {
             return Err(AccountingError::InvalidPosting("not a failed landing"));
         };
         self.tick += 1;
-        for (account, amount) in [
-            (Account::NetworkFees, *network_fee_lamports),
-            (Account::PriorityFees, *priority_fee_lamports),
+        for (account, kind, amount) in [
+            (
+                Account::NetworkFees,
+                FeeKind::Network,
+                *network_fee_lamports,
+            ),
+            (
+                Account::PriorityFees,
+                FeeKind::Priority,
+                *priority_fee_lamports,
+            ),
         ] {
             if amount > 0 {
                 self.post(LedgerEntry {
@@ -498,6 +589,13 @@ impl AccountingOracle {
                     amount,
                     memo: format!("failed landing {event_id}"),
                 })?;
+                self.fee_lines.push(FeeLine {
+                    tick: self.tick,
+                    strategy: strategy.into(),
+                    kind,
+                    amount,
+                    memo: format!("failed landing {event_id}"),
+                });
             }
         }
         Ok(())
@@ -589,6 +687,102 @@ impl AccountingOracle {
         self.lots.get(mint).map(|v| v.as_slice()).unwrap_or(&[])
     }
 
+    /// Owner deposit: cash IN that is NOT trading P&L (PF0 CE-3).
+    pub fn post_deposit(&mut self, amount: u64, memo: &str) -> Result<(), AccountingError> {
+        self.tick += 1;
+        self.post(LedgerEntry {
+            tick: self.tick,
+            strategy: "external".into(),
+            debit: Account::Cash,
+            credit: Account::ExternalDeposits,
+            amount,
+            memo: format!("external deposit {memo}"),
+        })
+    }
+
+    /// Owner withdrawal: cash OUT that is NOT a trading loss (PF0 CE-3).
+    pub fn post_withdrawal(&mut self, amount: u64, memo: &str) -> Result<(), AccountingError> {
+        self.tick += 1;
+        self.post(LedgerEntry {
+            tick: self.tick,
+            strategy: "external".into(),
+            debit: Account::ExternalWithdrawals,
+            credit: Account::Cash,
+            amount,
+            memo: format!("external withdrawal {memo}"),
+        })
+    }
+
+    pub fn external_deposits(&self) -> u64 {
+        self.balance(&Account::ExternalDeposits)
+    }
+
+    pub fn external_withdrawals(&self) -> u64 {
+        self.balance(&Account::ExternalWithdrawals)
+    }
+
+    /// Cashflow-normalized net P&L:
+    /// `net_pnl = ending NAV − starting NAV − deposits + withdrawals`.
+    /// USD marks never enter this number (SOL-denominated).
+    pub fn net_pnl(&self, starting_nav: u64, exit_marks: &HashMap<String, u64>) -> i64 {
+        let ending = self.nav(exit_marks).nav;
+        ending as i64 - starting_nav as i64 - self.external_deposits() as i64
+            + self.external_withdrawals() as i64
+    }
+
+    /// Reporting-only fee attribution lines (gross-to-net waterfall source).
+    pub fn fee_lines(&self) -> &[FeeLine] {
+        &self.fee_lines
+    }
+
+    /// Fee totals by kind (lamports).
+    pub fn fee_totals(&self) -> std::collections::BTreeMap<FeeKind, u64> {
+        let mut totals = std::collections::BTreeMap::new();
+        for line in &self.fee_lines {
+            *totals.entry(line.kind).or_insert(0) += line.amount;
+        }
+        totals
+    }
+
+    /// Per-strategy attribution (PF0 CE-4), derived EXACTLY from the
+    /// append-only entries and fee lines: cash delta, realized P&L, fee
+    /// totals by kind, and fill counts per strategy tag. Invariant: the
+    /// per-strategy cash deltas sum to the shared wallet's cash delta
+    /// (opening/external excluded from strategy buckets by tag).
+    pub fn attributed(&self) -> std::collections::BTreeMap<String, StrategyAttribution> {
+        let mut out: std::collections::BTreeMap<String, StrategyAttribution> =
+            std::collections::BTreeMap::new();
+        for entry in &self.entries {
+            if entry.strategy == "opening" || entry.strategy == "external" {
+                continue;
+            }
+            let bucket = out.entry(entry.strategy.clone()).or_default();
+            bucket.strategy = entry.strategy.clone();
+            if entry.debit == Account::Cash {
+                bucket.cash_delta += entry.amount as i64;
+            } else if entry.credit == Account::Cash {
+                bucket.cash_delta -= entry.amount as i64;
+            }
+            if entry.credit == Account::RealizedPnl {
+                bucket.realized_pnl += entry.amount as i64;
+            } else if entry.debit == Account::RealizedPnl {
+                bucket.realized_pnl -= entry.amount as i64;
+            }
+            if entry.memo.starts_with("buy ") || entry.memo.starts_with("sell basis ") {
+                bucket.fills += 1;
+            }
+        }
+        for line in &self.fee_lines {
+            if line.strategy == "opening" || line.strategy == "external" {
+                continue;
+            }
+            let bucket = out.entry(line.strategy.clone()).or_default();
+            bucket.strategy = line.strategy.clone();
+            *bucket.fees_by_kind.entry(line.kind).or_insert(0) += line.amount;
+        }
+        out
+    }
+
     /// NAV: transaction accounts + externally supplied executable-exit
     /// marks. Marks are MODEL-DERIVED and never posted to the ledger.
     pub fn nav(&self, exit_marks: &HashMap<String, u64>) -> NavBreakdown {
@@ -670,6 +864,7 @@ mod tests {
             priority_fee_lamports: 5_000,
             tip_lamports: 0,
             rent_lamports: 1_500_000,
+            slippage_lamports: 0,
             fee_synthetic_fallback: false,
         }
     }
@@ -694,6 +889,7 @@ mod tests {
             priority_fee_lamports: 5_000,
             tip_lamports: 0,
             rent_recovered_lamports: rent_back,
+            slippage_lamports: 0,
             fee_synthetic_fallback: false,
         }
     }
@@ -862,6 +1058,79 @@ mod tests {
         let nav = oracle.nav(&HashMap::new());
         assert_eq!(nav.claimable, 250_000);
         assert_eq!(nav.nav, 100_250_000);
+    }
+
+    #[test]
+    fn oracle_reconstructs_engine_round_trip_cash_independently() {
+        // PF0 CE-1 failing test: a run with a BUY **and a FEE-BEARING SELL**
+        // must reconcile to the lamport. The engine's quote_out_net is
+        // already net of venue fees, so the oracle must NOT debit fee
+        // accounts against cash a second time on the sell side.
+        use crate::engine::protocol::{
+            ExecutionFrictions, MarketBook, MarketSnapshot, ProtocolParams, QuoteMint, VenueState,
+        };
+        use crate::observation::{Phase, Safety};
+        use crate::policies::EntryPolicy;
+
+        let mk_event = |id: &str, at_ms: u64| crate::observation::Observation {
+            event_id: id.into(),
+            mint: "M".into(),
+            slot: 10,
+            chain_at_ms: at_ms - 5,
+            observed_at_ms: at_ms,
+            feature_available_at_ms: at_ms + 10,
+            phase: Phase::ActiveCurve,
+            safety: Safety::Eligible,
+            coverage_ok: true,
+            price_lamports_per_token: 1_000,
+            exit_liquidity_lamports: 1_000_000_000,
+            net_flow_lamports: 1,
+            unique_buyers: 10,
+            creator_sell_lamports: 0,
+            curve_progress_bps: 1_000,
+            fee_bps: 100,
+        };
+        // Enter at t=100, hold past max-hold (exit due at event 2).
+        let events = vec![mk_event("e1", 100), mk_event("e2", 30_000)];
+        let mut book = MarketBook::new();
+        book.push(MarketSnapshot {
+            mint: "M".into(),
+            slot: 9,
+            quote_mint: QuoteMint::Sol,
+            state: VenueState::BondingCurve {
+                virtual_token_reserves: 1_073_000_000_000_000,
+                virtual_quote_reserves: 30_000_000_000,
+                mint_total_supply: 1_000_000_000_000_000,
+                fee: crate::fees::CurveFeeState::from_observed_fee_config(95, 30, 9),
+            },
+        });
+        let outcome = crate::engine::protocol::run(
+            &events,
+            &book,
+            &mut EntryPolicy::s01(crate::StrategyKnobs::default()),
+            100_000_000,
+            &crate::RiskConstraints::default(),
+            &ExecutionFrictions::default(),
+            &ProtocolParams::default(),
+        );
+        assert!(
+            !outcome.records.is_empty(),
+            "test setup must produce records"
+        );
+        assert!(
+            outcome
+                .records
+                .iter()
+                .any(|r| matches!(r, crate::engine::protocol::ExecutionRecord::SellFill { .. })),
+            "test setup must include a sell"
+        );
+        let oracle = AccountingOracle::from_run(&outcome, 100_000_000).unwrap();
+        assert!(oracle.verify_conservation().is_ok());
+        assert_eq!(
+            oracle.cash(),
+            outcome.ending_cash_lamports,
+            "oracle must independently reconstruct engine cash on a fee-bearing round trip (PF0 CE-1)"
+        );
     }
 
     #[test]
