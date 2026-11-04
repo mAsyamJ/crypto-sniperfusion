@@ -18,6 +18,7 @@ RUNS = ROOT / "harness" / "runs"
 MAINNET_GENESIS = "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d"
 ALLOWED_METHODS = {"getGenesisHash", "getSlot", "getBlock"}
 MAX_REQUESTS = 5
+MAX_BLOCK_RESPONSE_BYTES = 32_000_000
 
 
 class ProbeError(Exception):
@@ -64,8 +65,8 @@ class RpcClient:
         )
         try:
             with urllib.request.urlopen(req, timeout=self._timeout) as res:
-                raw = res.read(3_000_000 + 1)
-                if len(raw) > 3_000_000:
+                raw = res.read(MAX_BLOCK_RESPONSE_BYTES + 1)
+                if len(raw) > MAX_BLOCK_RESPONSE_BYTES:
                     raise ProbeError("BLOCK_RESPONSE_TOO_LARGE")
         except urllib.error.HTTPError as exc:
             # Intentionally never include exc string (could contain secret URL).
