@@ -271,6 +271,9 @@ class JsonRpc:
             params[1]["before"] = before
         return self._call("getSignaturesForAddress", params)
 
+    def get_account_info(self, address):
+        return self._call("getAccountInfo", [address, {"encoding": "base64"}])
+
     def get_transaction(self, signature):
         return self._call("getTransaction", [signature, {
             "encoding": "json",
