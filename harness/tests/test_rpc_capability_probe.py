@@ -55,7 +55,8 @@ class RpcProbeTests(unittest.TestCase):
         r = probe.probe(c)
         self.assertEqual(r["status"], "BLOCKED")
         self.assertEqual(r["error_code"], "TX_VERSION_UNSUPPORTED")
-        self.assertNotIn("url", json.dumps(r))
+        self.assertFalse(r["source_url_or_credentials_recorded"])
+        self.assertNotIn("SECRET", json.dumps(r))
 
     def test_no_http_secrets_or_non_http_schemes(self):
         with self.assertRaisesRegex(probe.ProbeError, "HTTPS"):
