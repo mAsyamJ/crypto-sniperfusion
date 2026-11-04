@@ -67,3 +67,7 @@ Research approval rules: preregister controls before trials; train/tune only on 
 Every session ends with: HEAD SHA; branch; files changed; commands/exit codes; immutable receipt hashes; implementation proof class; negative controls; remaining blockers; explicit next test; local commit/PR status. If unavailable, say NOT_RUN / UNKNOWN instead of inventing it.
 
 Next work package: [NEXT_GOAL_H8_G0.md](NEXT_GOAL_H8_G0.md).
+
+## New H6/G0 provider probe (read-only)
+
+`python3 harness/rpc_capability_probe.py --out harness/runs/rpc-sample-unique.json` uses the existing `SNF_MAINNET_RPC_URL` environment variable, caps total calls at five, checks genesis/slot/full-block support, and writes a sanitized immutable sample receipt. Success is only `FULL_BLOCK_SAMPLE_AVAILABLE`; `coverage_state` remains UNKNOWN until a complete cohort is independently verified. Never paste an endpoint-bearing error, rotate keys automatically, or run transaction methods.

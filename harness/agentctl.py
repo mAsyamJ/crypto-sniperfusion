@@ -105,6 +105,7 @@ def commands():
         "synthetic_demo": "python3 harness/agentctl.py research-demo --cycles 3 --out harness/runs/agent-demo-unique.json",
         "existing_harness_help": "python3 harness/snf-harness --help",
         "collector_help_READ_ONLY": "python3 harness/launch_cohort_capture.py --help",
+        "rpc_capability_READ_ONLY": "python3 harness/rpc_capability_probe.py --out harness/runs/rpc-sample-unique.json",
         "next_goal": "cat docs/NEXT_GOAL_H8_G0.md",
     }
     print(json.dumps(rows, indent=2))

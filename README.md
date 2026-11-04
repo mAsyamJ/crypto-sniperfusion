@@ -17,6 +17,8 @@ python3 harness/agentctl.py doctor
 python3 harness/agentctl.py skills
 python3 harness/agentctl.py commands
 python3 harness/agentctl.py lint-skills
+# Optional operator-owned read-only RPC capability check (no wallet):
+# python3 harness/rpc_capability_probe.py --out harness/runs/rpc-sample-unique.json
 python3 -m unittest discover -s harness/tests -v
 python3 harness/agentctl.py research-demo --cycles 3 --out harness/runs/agent-demo-v1.json
 ```
@@ -62,3 +64,7 @@ The repository is public; never commit keys, API URLs containing tokens, signing
 ## License
 
 The SniperFusion repository has no general redistribution license granted beyond any explicit files. See individual upstream dependencies for their applicable licenses.
+
+## Safe Mainnet RPC block-capability probe
+
+If your existing operator-owned `SNF_MAINNET_RPC_URL` is already set in your shell, run `python3 harness/rpc_capability_probe.py --out harness/runs/rpc-sample-unique.json` to check Mainnet genesis, a finalized slot, and one recent full `getBlock` sample within five read-only requests. The receipt never includes the URL/key. This probes **provider compatibility only**; success does not establish G0 coverage or strategy profitability. Do not paste the RPC URL/key into a prompt or public log. The key is never modified by this tool.
