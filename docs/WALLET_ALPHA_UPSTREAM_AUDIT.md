@@ -61,3 +61,15 @@ GitHub snapshot SHAs above; verify source/commit/LICENCE before implementing. Of
 - https://github.com/solana-foundation/surfpool
 
 No third-party repo was cloned into the user's local working directory or executed as part of this audit. Respect the root `AGENTS.md` clean-room restrictions.
+
+## Source-level integration amendment (2026-11-04, post-WA3)
+
+The original audit above inspected GitHub API snapshots. After WA1–WA3 shipped, `Kelows/million` was cloned (MIT) into `upstream/million` @ `c89ad07c` and source-read directly; `DracoR22/handi-cat_wallet-tracker` @ `f154c670` was cloned to a temp directory outside the repo (no license → never vendored/executed; clean-room only). Findings that changed or confirmed the map:
+
+1. **million copyability.service.ts** confirms the documented limitation verbatim: `DELAY_SEC = 60` ("one candle"), `TOKENS_PER_WALLET = 6` most-recent closed trades, GeckoTerminal minute-candle replay. WA3's replacement (actual timestamped market states via `DelayPricer`, six delays 500 ms–60 s, full holdings, leader price structurally unreachable) is already implemented and tested.
+2. **million discovery.service.ts `INFRA_ADDRESSES`** provided concrete adoptable facts (now in `harness/wallet_roster.py` with attribution): Raydium AMM v4 authority `5Q544fKr…`, Raydium CPMM authority `GpMZbSM…`, pump.fun fee recipient `39azUYF…`, Jupiter referral `CebN5WG…`, plus their sampler-discovered bot address. Also adopted: venue-vault exclusion *concept* and the `find-infra` heuristic (an address that is a top buyer across unrelated mints is infrastructure) — reimplemented as `flag_probable_infrastructure`.
+3. **million metrics.ts** `HIGH_WINRATE_SUS` (win rate > 0.9 with ≥20 closed trades flagged as *suspicious*, not admirable — a wash-trading tell) aligns with our no-win-rate-goal policy; the concept is reserved for the WA4/WA5 ranking features.
+4. **million token-check.service.ts** (mint/freeze authority gating, LP-vault-excluded top holders, Jupiter sell simulation, cached Rugcheck) maps to the goal plan's WA4 hard-safety layer — future work, not silently adopted.
+5. **handi-cat TrackWallets/WalletPool** (per-wallet subscription add/remove, subscription-id registry, `BANNED_WALLETS` blocklist) was concept-reimplemented as the offline `harness/wallet_watch.py` (subscriptions with preserved history + write-once alert ledger; NO Telegram/network). No handi-cat code was copied at any point.
+
+Everything integrated is behavior/facts under the respective licenses; nothing executable from these repos entered our build, runtime, or evidence paths.

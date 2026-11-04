@@ -79,15 +79,10 @@ class WalletAlphaLabTests(unittest.TestCase):
         result = lab.metrics(rows)
         self.assertNotIn(last["wallet"], [w["wallet"] for w in result["wallets"]])
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class WalletRosterTests(unittest.TestCase):
     def test_discovery_excludes_infrastructure_and_failed(self):
         import wallet_roster as wr
-        import json as _json
-        from pathlib import Path as _P
         pump = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
         w = "Wa11etWa11etWa11etWa11etWa11etWa11etWa11etWa"
         tx_ok = {
@@ -130,3 +125,97 @@ class WalletRosterTests(unittest.TestCase):
         self.assertEqual(rows[0]["wallet"], "profitableObserved", "net P&L dominates rank")
         for row in rows:
             self.assertIn("uncertainty", row, "uncertainty column mandatory")
+
+
+class MillionIntegrationTests(unittest.TestCase):
+    """Facts and heuristics adopted from million (MIT, upstream/million
+    @ c89ad07c) — reimplemented, not copied."""
+
+    def test_million_infra_addresses_excluded(self):
+        import wallet_roster as wr
+        # Raydium AMM v4 authority / pump fee recipient / Jupiter referral
+        for infra in ("5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1",
+                      "39azUYFWPz3VHgKCf3VChUwbpURdCHRxjWVowf5jUJjg",
+                      "CebN5WGQ4jvEPvsVU4EoHEpgzq1VV7AbicfhtW4xC9iM",
+                      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDd1v"):
+            self.assertIn(infra, wr.INFRASTRUCTURE)
+
+    def test_blocklist_excludes_wallets(self):
+        import tempfile as _temp
+        import wallet_roster as wr
+        from pathlib import Path as _P
+        with _temp.TemporaryDirectory() as tmp:
+            banned = _P(tmp) / "banned.txt"
+            banned.write_text("# operator blocklist\nBadWa11etBadWa11etBadWa11etBadWa11etBadWa11et\n")
+            bad = "BadWa11etBadWa11etBadWa11etBadWa11etBadWa11et"
+            tx = {"transaction": {"signatures": ["S1"], "message": {"accountKeys": [bad]}},
+                  "meta": {"err": None, "preTokenBalances": [], "postTokenBalances": []}}
+            wallets = wr.discover_wallets([tx], banned=wr.load_banned(banned))
+            self.assertEqual(wallets, {})
+
+    def test_cross_token_top_buyer_is_probable_infrastructure(self):
+        import wallet_roster as wr
+        # A bot buying across 3 unrelated mints -> flagged; a human trading
+        # 2 mints -> not flagged.
+        mint_buyers = {
+            "MintAaa": ["Bot11111111111111111111111111111111111111111", "Human1"],
+            "MintBbb": ["Bot11111111111111111111111111111111111111111", "Human2"],
+            "MintCcc": ["Bot11111111111111111111111111111111111111111"],
+        }
+        flagged = wr.flag_probable_infrastructure(mint_buyers, distinct_mints_threshold=3)
+        self.assertIn("Bot11111111111111111111111111111111111111111", flagged)
+        self.assertNotIn("Human1", flagged)
+
+
+class WalletWatchTests(unittest.TestCase):
+    """handi-cat UX concept (add/remove wallet + alerts), reimplemented
+    offline. No handi-cat code (no license)."""
+
+    def _watchlist(self, tmp):
+        return str(Path(tmp) / "watchlist.json")
+
+    def test_subscribe_unsubscribe_and_alert_gating(self):
+        import tempfile as _temp
+        import wallet_watch as ww
+        W1 = "Wa11etWa11etWa11etWa11etWa11etWa11etWa11etWa"
+        W2 = "Wa22etWa22etWa22etWa22etWa22etWa22etWa22etWa"
+        with _temp.TemporaryDirectory() as tmp:
+            wl = self._watchlist(tmp)
+            ww.subscribe(wl, W1)
+            with self.assertRaises(ww.WatchlistError):
+                ww.subscribe(wl, W1)  # duplicate refused
+            ww.subscribe(wl, W2)
+            ww.unsubscribe(wl, W2)
+            signals = str(Path(tmp) / "signals.jsonl")
+            Path(signals).write_text("\n".join([
+                json.dumps({"signal_id": "s1", "wallet": W1, "mint": "M", "leader_side": "Buy", "observed_at_ms": 1, "quote_available_at_ms": 1}),
+                json.dumps({"signal_id": "s2", "wallet": W2, "mint": "M", "leader_side": "Buy", "observed_at_ms": 2, "quote_available_at_ms": 2}),
+            ]) + "\n")
+            out = str(Path(tmp) / "alerts.jsonl")
+            summary = ww.process_signals(wl, signals, out)
+            self.assertEqual(summary["alerted"], 1)
+            self.assertEqual(summary["skipped"], 1)
+            rows = [json.loads(l) for l in Path(out).read_text().splitlines()]
+            kinds = {r["signal_id"]: r["kind"] for r in rows}
+            self.assertEqual(kinds["s1"], "ALERT")
+            self.assertEqual(kinds["s2"], "SKIPPED_NOT_SUBSCRIBED")
+            # Immutable ledger.
+            with self.assertRaises(ww.WatchlistError):
+                ww.process_signals(wl, signals, out)
+
+    def test_resubscribe_after_unsubscribe(self):
+        import tempfile as _temp
+        import wallet_watch as ww
+        W = "Wa33etWa33etWa33etWa33etWa33etWa33etWa33etWa"
+        with _temp.TemporaryDirectory() as tmp:
+            wl = self._watchlist(tmp)
+            ww.subscribe(wl, W)
+            ww.unsubscribe(wl, W)
+            ww.subscribe(wl, W)  # history preserved, active again
+            data = ww.load_watchlist(wl)
+            self.assertTrue(data["subscriptions"][W]["active"])
+            self.assertIsNotNone(data["subscriptions"][W]["unsubscribed_at"])
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -11,8 +11,14 @@ Last reviewed: 2026-11-02. All repositories cloned read-only under `upstream/`; 
 | m8s | https://github.com/m8s-lab/solana-sniping-bot.git | `2a0e3bf5f070c71003e19db3ee35adff3fc0f9b7` ("fix: env template") | 2025-06-12 | **NONE** — `package.json` declares `"license": "MIT"` but no license text exists anywhere in the tree | Design reference (clean-room only) |
 | mev-bot | https://github.com/bigmacman1129/solana-sniper-trading-mev-bot.git | `829f251d4e371102b406176c5bd459ebf4ac87ac` ("feat: add Jupiter routing, trailing stops, and cross-DEX arb") | 2026-08-25 | **Ms-PL** (`LICENSE.md` line 1: "Microsoft Public License (Ms-PL)"). README §License falsely claims MIT. Fork of warp.id bot (`package.json` name `warp-solana-bot`) | Design reference (clean-room only) |
 | pump-docs | https://github.com/pump-fun/pump-public-docs.git | `639b87fb45c3adeffa6f7c4a1bf0cb85e392bf22` | 2026-10-13 | Docs + official IDLs (repo `.gitignore`d from root) | **Protocol source of truth** |
+| million | https://github.com/Kelows/million.git | `c89ad07caaf70773d40b45943e136eadc4f946a5` | 2026-09-14 | **MIT** (`LICENSE`, (c) 2026 Kelows) | Wallet-alpha behavioral reference (discovery infra addresses, copyability design limits, metrics flags); cloned 2026-11-04 for the Wallet Alpha integration, read-only, never executed |
 
 Upstream worktrees verified clean (`git status --short` empty) at pin time.
+
+### Wallet-alpha additions (2026-11-04)
+
+- **million — MIT** (pinned above, cloned under `upstream/million`): permissive; studied and behaviorally re-implemented with independent code (MIT notice here constitutes attribution for derived *behavior*, not code). Adopted FACTS: its audited `INFRA_ADDRESSES` infrastructure exclusions (Raydium AMM v4 + CPMM authorities, pump.fun fee recipient, Jupiter referral), quote-asset mints (WSOL/USDC/USDT), the `find-infra` cross-token-top-buyer bot heuristic, and the `HIGH_WINRATE_SUS` suspiciousness flag concept. Rejected/REPLACED by design: its copyability measurement (fixed 60-second candle delay + 6 recent closed trades + GeckoTerminal minute candles) — superseded by WA3's timestamped multi-delay (500 ms–60 s) follower over full holdings, per `docs/WALLET_ALPHA_GOAL_PLAN.md`.
+- **handi-cat (`DracoR22/handi-cat_wallet-tracker` @ `f154c670`) — NO LICENSE located**: cloned to a temp directory OUTSIDE this repository for behavior study ONLY; **never vendored into `upstream/`, never executed, no code copied** (same treatment as yuto/m8s/mev-bot). Adopted UX *concepts*, re-implemented from scratch: per-wallet subscription add/remove with history, and a wallet blocklist constant — realized as `harness/wallet_watch.py` (offline alert ledger; no Telegram/network) and the operator blocklist file. Stars/forks measure visibility, not audit quality or licensing safety.
 
 ## License conclusions
 

@@ -26,6 +26,7 @@ Living document; update at every milestone close. Format: state, evidence pointe
 | H8/PF5 — research registry + one-use holdout | **COMPLETE (machinery)** (2026-11-04; hash-chained preregistration; structural 20-trial bound; cross-process one-use holdout; BH/Bonferroni; 12 tests) | `docs/evidence/G0-H8-session.md` |
 | WA0 — wallet-alpha audit + offline lab | **COMPLETE** (2026-11-04; upstream license map, architecture, synthetic negative-control evaluator) | `docs/WALLET_ALPHA_UPSTREAM_AUDIT.md` |
 | WA1–WA3 — wallet normalization, leader P&L, delayed follower | **COMPLETE (code + live smoke)** (2026-11-04; 306/306 Rust, 114 Python; real observed leader −4.96 SOL, unknown-basis wallets exactly 0; follower loses at all delays vs S00; nothing promotable) | `docs/evidence/WA1-WA3.md` |
+| WA-int — million + handi-cat deep integration | **COMPLETE** (2026-11-04; million cloned MIT-pinned @c89ad07c, infra-facts + cross-token-bot heuristic + blocklist adopted with attribution; handi-cat clean-room concepts → offline wallet_watch.py alert layer; fixed-60s copyability replaced by WA3 multi-delay per plan; 120 Python tests) | `docs/WALLET_ALPHA_UPSTREAM_AUDIT.md` §amendment |
 | M4 — Chainstack parity scope closure | PLANNED | — |
 | M5 — Token intelligence + DevFlowMonitor | PLANNED | — |
 | M6 — Multi-DEX + copy trading | PLANNED | — |
@@ -158,3 +159,8 @@ PF0 8653d76/ba20ded · PF1 2ed8e8d · G0 aaa881c · H8 e2ab4e9. Fee truth now ON
 ## Wallet Alpha WA1–WA3 session record (2026-11-04, branch `codex/wallet-alpha-upstream-integration-20261104`, local only)
 
 c0270c0 WA1 owner-verified balance-delta normalizer (13-test fixture matrix, dedup, conservation) · 486e20b WA2 `sniper wallet-pnl` via PF1 oracle + roster discovery/ranking with honest unknown-history accounting · 5a54d40 WA3 delayed follower (6 delays, leader-price unreachable, matched S00). Live read-only validation on 12 real mainnet txs (congestion storm: 97% pump-tx failure). All observed leaders lose or are unknown-basis; all follower delay arms lose; S00 dominates everywhere. MIT references (Dorado/Solsonar/million) reimplemented originally. Next: calm-window cohort → W02 copyability-ranked follow vs S00/S02/RX through the H8 preregistration path.
+
+
+## Wallet Alpha source integration (2026-11-04, same branch)
+
+Deep source-read of Kelows/million (MIT, now cloned under upstream/ pinned c89ad07c) and DracoR22/handi-cat (NO license — temp-clone outside repo, clean-room concepts only). Adopted: million's INFRA_ADDRESSES facts (Raydium AMM v4/CPMM authorities, pump fee recipient, Jupiter referral, quote mints), the find-infra cross-token-top-buyer bot heuristic, operator blocklist; handi-cat's subscription UX reimplemented offline as harness/wallet_watch.py (immutable alert ledger, no network/Telegram). Explicitly rejected-by-design: million's fixed 60-second candle + 6-trade copyability measurement (already superseded by WA3's 500 ms–60 s multi-delay follower). high-win-rate suspicion flag reserved for WA4. Manifest + audit amendment updated.

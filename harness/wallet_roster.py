@@ -19,20 +19,47 @@ from launch_cohort_capture import (  # noqa: E402
 
 # Infrastructure accounts that must NEVER be ranked as wallets (known
 # program ids, pump authorities/fee recipients, WSOL mint).
+# Infrastructure accounts that must NEVER be ranked as wallets. Sources:
+# pinned program ids + million's audited INFRA_ADDRESSES (MIT, upstream/
+# million @ c89ad07c discovery.service.ts: Raydium authorities, pump fee
+# recipient, Jupiter referral/v6) + quote-asset mints.
 INFRASTRUCTURE = {
     PUMP_PROGRAM_ID,
     "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA",
     "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4",
     "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8",
     "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",
-    "So11111111111111111111111111111111111111112",
+    "So11111111111111111111111111111111111111112",  # WSOL
     "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P",
     "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwa2t1vz7V",  # pump fee
+    # million discovery INFRA_ADDRESSES (MIT):
+    "5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1",  # Raydium AMM v4 authority
+    "GpMZbSM2GgvTKHJirzeGfMFoaZ8UR2X7F4v8vHTvxFbL",  # Raydium CPMM authority
+    "39azUYFWPz3VHgKCf3VChUwbpURdCHRxjWVowf5jUJjg",  # pump.fun fee recipient
+    "CebN5WGQ4jvEPvsVU4EoHEpgzq1VV7AbicfhtW4xC9iM",  # Jupiter referral
+    # quote-asset mints (never "wallets"):
+    "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDd1v",  # USDC
+    "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",  # USDT
 }
 
+# Operator-curated blocklist (UX concept from handi-cat's BANNED_WALLETS,
+# reimplemented: no code copied; the list is OUR file, default empty).
+BANNED_FILE = Path(__file__).resolve().parent / "wallet_blocklist.txt"
 
-def discover_wallets(transactions):
-    """Owners of moved token accounts + fee payers, minus infrastructure."""
+
+def load_banned(path=BANNED_FILE):
+    if not Path(path).exists():
+        return set()
+    return {line.strip() for line in Path(path).read_text().splitlines()
+            if line.strip() and not line.startswith("#")}
+
+
+def discover_wallets(transactions, banned=None):
+    """Owners of moved token accounts + fee payers, minus infrastructure,
+    operator blocklist, and cross-token top-buyer bots (million's find-infra
+    sampler heuristic: an address buying across many unrelated mints is
+    infrastructure, not a copyable trader)."""
+    banned = banned if banned is not None else load_banned()
     wallets = {}
     for tx in transactions:
         meta = tx.get("meta") or {}
@@ -45,10 +72,24 @@ def discover_wallets(transactions):
             if r.get("owner")
         }
         for wallet in owners | {keys[0]}:
-            if wallet in INFRASTRUCTURE or len(wallet) > 44:
+            if wallet in INFRASTRUCTURE or wallet in banned or len(wallet) > 44:
                 continue
             wallets.setdefault(wallet, set()).add(tx["transaction"]["signatures"][0])
     return {w: sorted(s) for w, s in wallets.items()}
+
+
+def flag_probable_infrastructure(mint_buyers, distinct_mints_threshold=3):
+    """Addresses appearing as a (top) buyer across >= threshold distinct,
+    unrelated mints are probable bots/routers (million find-infra.mjs
+    heuristic, reimplemented). Input: {mint: [buyer wallets]}; output: set.
+    """
+    counts = {}
+    for mint, buyers in mint_buyers.items():
+        for wallet in set(buyers):
+            if wallet in INFRASTRUCTURE:
+                continue
+            counts.setdefault(wallet, set()).add(mint)
+    return {w for w, mints in counts.items() if len(mints) >= distinct_mints_threshold}
 
 
 def fetch_wallet_history(rpc, wallet, *, limit=25, retries=1, sleep=lambda s: None):
