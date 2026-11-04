@@ -2,7 +2,7 @@
 
 **Solana-first, chain-agnostic long-term design.** SniperFusion is an actively developed Rust protocol/replay/strategy research project. It is **not** a demonstrated profitable sniper or an agent-controlled funded trading service.
 
-> **Current checked milestone: H7 (2026-11-04).** M0–M3c and H0/H2/H4/H6/H7 code are recorded; the Surfpool real-program test scope is documented in M3c. H6's *code* exists but no full independently covered mainnet creation cohort has been collected. H7 has 11 strategy policies and two economics engines, but **S00 NO_TRADE beat all ten trading policies on synthetic data**. Verdict: `EDGE_NOT_DEMONSTRATED`. H3 seven-day read-only shadow is not complete. Refer to [PROJECT_STATUS](docs/PROJECT_STATUS.md), [H6 evidence](docs/evidence/H6.md), [H7 evidence](docs/evidence/H7.md) and the actual HEAD before reporting progress.
+> **Checked progress: PF1 + H8 registry (2026-11-04).** The Rust P&L V2 engine and double-entry oracle are tested; G0 collected short block-verified COMPLETE windows but captured zero successful launches; on-chain fee-config observations are recorded. H8 preregistration machinery exists, not a proven alpha system. **S00 NO_TRADE beats every tested trading policy on synthetic data**; seven-day read-only forward shadow and real decision-time reserve snapshots remain open. See [PROJECT_STATUS](docs/PROJECT_STATUS.md), [PF1 evidence](docs/evidence/PF1.md), [G0/H8 evidence](docs/evidence/G0-H8-session.md), and actual HEAD.
 
 ## Start here — coding agents
 
@@ -72,3 +72,11 @@ If your existing operator-owned `SNF_MAINNET_RPC_URL` is already set in your she
 ## Profit-first H8 and P&L evaluation
 
 Business objective: **prove repeatable, risk-constrained net trading profit after all fees and realistic execution**, not maximize trade count or win rate. Current H7 synthetic evidence remains `EDGE_NOT_DEMONSTRATED` and S00 NO_TRADE dominates. Read [Profit-First Goal Plan](docs/PROFIT_FIRST_GOAL_PLAN.md) and [Profit-First Agent Mission](harness/docs/PROFIT_FIRST_AGENT_MISSION.md); dispatch `.agents/skills/sniper-pnl-architect/SKILL.md` for every P&L, strategy profitability, or finance report task. The mission is a plan, not implemented P&L V2 code. Retain mainnet read-only and prohibit independent funded agents.
+
+## Wallet Alpha / source integration (WA0 research branch)
+
+The next bounded workstream is [Wallet Alpha Goal Plan](docs/WALLET_ALPHA_GOAL_PLAN.md), [verified upstream audit](docs/WALLET_ALPHA_UPSTREAM_AUDIT.md), and [short agent mission](harness/docs/WALLET_ALPHA_AGENT_MISSION.md). Specialist playbook: `.agents/skills/wallet-alpha-solana-tracker/SKILL.md`.
+
+`python3 harness/wallet_alpha_lab.py --events harness/fixtures/wallet_alpha_synthetic.jsonl --min-trades 2` runs a strictly offline, **synthetic** follower-copyability negative control. It is NOT a production wallet tracker, live shadow bot or shared-capital P&L report; it does not find or follow mainnet wallets. P&L V2 in Rust remains the authoritative portfolio accountant for future WA1–WA3 integration.
+
+Do not equate GitHub stars with trading profitability. The highest-engagement wallet alert tracker reviewed, Handi Cat, lacks an explicit license grant; the licensed architectural reference is `Kelows/million` (MIT) with a separate balance-delta/FIFO control from `DoradoDevs` (MIT). Research must distinguish leader returns from executable follower returns after latency and every fee.
