@@ -20,6 +20,10 @@ Living document; update at every milestone close. Format: state, evidence pointe
 | INFRA-3 — Mainnet readiness: unfunded watch wallet + `rpc-probe --address` | **COMPLETE** (2026-11-04; read-only only, 249/249 tests ×2 on merged tree) | `docs/evidence/INFRA-3-mainnet-readiness.md` |
 | H6 — Canonical dataset contracts + bounded creation-cohort collector | **COMPLETE (code)** (2026-11-04; 266/266 Rust ×2, 55 Python; live cohort coverage INCOMPLETE — provider cannot serve block evidence; G0 stays BLOCKED) | `docs/evidence/H6.md` |
 | H7 — Strategy SDK (S00–S10, two engines) + accounting oracle + evaluator/CLI | **COMPLETE (code)** (2026-11-04; Engine A byte-exact Python parity; verdict EDGE_NOT_DEMONSTRATED — S00 dominates on the synthetic cohort; nothing promotable) | `docs/evidence/H7.md` |
+| PF0 — P&L audit + on-chain fee provenance | **COMPLETE** (2026-11-04; 5 counterexamples; curve fees OBSERVED 95+30=125 bps, canonical PumpSwap TIERED 125→30 bps; 25 bps reference is fixture-only) | `docs/evidence/PF0.md`, `docs/PF0_PNL_AUDIT.md` |
+| PF1 — P&L V2 (reconciled equity, waterfall, deterministic receipts) | **COMPLETE** (2026-11-04; oracle round-trip lamport-exact; deposits/attribution/slippage; V2 CLI bundle; 9 mandated tests; S00 dominates at observed fees) | `docs/evidence/PF1.md` |
+| G0 — block-verified real launch cohort | **MECHANICS UNBLOCKED** (2026-11-04; collector version-1 fix + checkpoint/budgets; THREE COMPLETE windows 3/7/41 slots; zero creates = 87% pump-tx failure storm, market fact; scale capture open) | `docs/evidence/G0-H8-session.md` |
+| H8/PF5 — research registry + one-use holdout | **COMPLETE (machinery)** (2026-11-04; hash-chained preregistration; structural 20-trial bound; cross-process one-use holdout; BH/Bonferroni; 12 tests) | `docs/evidence/G0-H8-session.md` |
 | M4 — Chainstack parity scope closure | PLANNED | — |
 | M5 — Token intelligence + DevFlowMonitor | PLANNED | — |
 | M6 — Multi-DEX + copy trading | PLANNED | — |
@@ -142,3 +146,8 @@ Executed the agent-executable hand-off PRs (goal plan PR-next-2 and PR-next-3) w
 Operator concurrent work preserved: INFRA-3 `0e36fb0` landed on this branch mid-session; further uncommitted rpc_probe edits remain untouched in the working tree.
 
 Next actions: (1) operator RPC tier that serves `getBlock` → rerun collector for a real COMPLETE cohort window (G0); (2) wire Engine B to real snapshots once the cohort exists; (3) H8/PR-next-4 (council sandbox, trial registry, sealed holdout access control, multiple-testing correction); H5-B Devnet round-trip still operator-gated BLOCKED; H3 shadow ≥7 days still NOT_STARTED.
+
+
+## PF/H8 session record (2026-11-04, branch `codex/profit-first-h8-pnl-goal-20261104`, local only)
+
+PF0 8653d76/ba20ded · PF1 2ed8e8d · G0 aaa881c · H8 e2ab4e9. Fee truth now ON-CHAIN-OBSERVED (95+30 curve; tiered canonical PumpSwap 125→30 bps); oracle reconciles Engine-B cash to the lamport on fee-bearing round trips; PnlRunReceiptV2 bundles deterministic and nonpromotable; G0 collector fixed (root cause: our maxSupportedTransactionVersion=0) with three COMPLETE windows; research registry enforces one-use holdout across processes. All strategies REJECTED on synthetic evidence; S00 NO_TRADE dominates. Next: reserve-snapshot capture for Engine B on real data; longer G0 windows in calmer periods; first registered hypothesis H-0001 execution when a real cohort exists; H3 shadow still NOT_STARTED; no push without owner authorization.
