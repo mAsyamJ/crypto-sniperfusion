@@ -52,3 +52,4 @@ Rules:
 
 Adding a receipt: new file `{ID}.md` in this directory, indexed here and in `docs/PROJECT_STATUS.md`, following the contract above.
 | `DASH-02-20261105.md` | DASH-02 | Control Tower functional backend: calendar PF1 extension + sniper-observability (hash-verify/quarantine/3 bundle shapes/idempotent SQLite) + loopback GET-only sniper-dashboard-api; 40 new tests (352/352 ×2 workspace); **live HTTP on real corpus: wa7 calendar reconciles −250,308 = sealed row, S00 pinned, NAV/returns UNAVAILABLE, events 501, tamper quarantined**; schema D-1 fixed | 
+| `DASH-03-20261105.md` | DASH-03 | Control Tower functional dashboard: React frontend (5 pages, DESIGN.md tokens, bundled fonts, zero external calls), PAPER/REAL_MONEY API-boundary isolation (T-MODE1..4; bypass 404), one-command launcher, 9/9 Playwright e2e (axe 0 serious/critical; 320/390/1024/1440 no overflow; dark+light; screenshots), vitest 6/6, workspace 356/356 ×2, AntiSlop Delivery Gate PASS |

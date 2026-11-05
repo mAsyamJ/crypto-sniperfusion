@@ -12,7 +12,7 @@ use axum::{Json, Router};
 use rusqlite::Connection;
 use serde_json::{json, Value};
 
-use sniper_observability::queries::{self, tz_offset_for, DataStatus, Stamped};
+use sniper_observability::queries::{self, tz_offset_for, DataStatus, Stamped, TradeMode};
 
 pub type SharedDb = Arc<Mutex<Connection>>;
 
@@ -168,8 +168,17 @@ async fn meta(State(db): State<SharedDb>) -> (StatusCode, Json<Value>) {
     )
 }
 
-async fn runs(State(db): State<SharedDb>) -> (StatusCode, Json<Value>) {
-    let (as_of, list) = with_db(&db, |c| (queries::built_at(c), queries::list_runs(c)));
+async fn runs(
+    State(db): State<SharedDb>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
+) -> (StatusCode, Json<Value>) {
+    let mode = match parse_mode(&params) {
+        Ok(m) => m,
+        Err(resp) => return resp,
+    };
+    let (as_of, list) = with_db(&db, |c| {
+        (queries::built_at(c), queries::list_runs_in(c, mode))
+    });
     (
         StatusCode::OK,
         Json(envelope(
@@ -179,7 +188,8 @@ async fn runs(State(db): State<SharedDb>) -> (StatusCode, Json<Value>) {
             json!(list
                 .into_iter()
                 .map(|r| json!({
-                    "id": r.id, "engine": r.engine, "evidence_class": r.evidence_class,
+                    "id": r.id, "mode": r.mode.as_str(), "engine": r.engine,
+                    "evidence_class": r.evidence_class,
                     "proof_state": r.proof_state, "completeness": r.completeness,
                     "verdict": r.verdict,
                 }))
@@ -193,6 +203,7 @@ fn run_detail_inner(db: &SharedDb, id: &str) -> (StatusCode, Json<Value>) {
     let (code, body) = stamped_envelope(stamped, |d| {
         json!({
             "id": d.entry.id,
+            "mode": d.entry.mode.as_str(),
             "engine": d.entry.engine,
             "evidence_class": d.entry.evidence_class,
             "proof_state": d.entry.proof_state,
@@ -232,9 +243,24 @@ async fn run_detail(
 fn resolve_run_id(
     db: &SharedDb,
     q_run: Option<String>,
+    mode: Option<TradeMode>,
 ) -> Result<String, (StatusCode, Json<Value>)> {
     match q_run {
         Some(id) => {
+            if let Some(mode) = mode {
+                // DASH-03 T-MODE*: mode isolation enforced at the API
+                // boundary — a run of the other scope is refused outright.
+                let guard = with_db(db, |c| queries::ensure_run_mode(c, &id, mode));
+                if let Err((status, reason)) = guard {
+                    let body = json!({
+                        "error": "mode isolation refused this run",
+                        "data_status": status.as_str(),
+                        "reason": reason,
+                        "requested_mode": mode.as_str(),
+                    });
+                    return Err((StatusCode::NOT_FOUND, Json(body)));
+                }
+            }
             let exists = with_db(db, |c| queries::list_runs(c).iter().any(|r| r.id == id));
             if exists {
                 Ok(id)
@@ -261,6 +287,22 @@ fn resolve_run_id(
                 })),
             ))
         }
+    }
+}
+
+/// Parse the optional `mode` parameter; invalid values are client errors
+/// (never silently ignored — that would blur the isolation contract).
+fn parse_mode(
+    params: &std::collections::HashMap<String, String>,
+) -> Result<Option<TradeMode>, (StatusCode, Json<Value>)> {
+    match params.get("mode").map(|s| s.as_str()) {
+        None => Ok(None),
+        Some("PAPER") => Ok(Some(TradeMode::Paper)),
+        Some("REAL_MONEY") => Ok(Some(TradeMode::RealMoney)),
+        Some(other) => Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": format!("mode must be PAPER or REAL_MONEY, got {other}")})),
+        )),
     }
 }
 
@@ -298,8 +340,12 @@ fn pnl_summary_payload(s: queries::PnlSummary) -> Value {
     })
 }
 
-fn pnl_summary_for(db: &SharedDb, run: Option<String>) -> (StatusCode, Json<Value>) {
-    let id = match resolve_run_id(db, run) {
+fn pnl_summary_for(
+    db: &SharedDb,
+    run: Option<String>,
+    mode: Option<TradeMode>,
+) -> (StatusCode, Json<Value>) {
+    let id = match resolve_run_id(db, run, mode) {
         Ok(id) => id,
         Err(resp) => return resp,
     };
@@ -312,14 +358,23 @@ async fn pnl_summary_query(
     State(db): State<SharedDb>,
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> (StatusCode, Json<Value>) {
-    pnl_summary_for(&db, params.get("run").cloned())
+    let mode = match parse_mode(&params) {
+        Ok(m) => m,
+        Err(resp) => return resp,
+    };
+    pnl_summary_for(&db, params.get("run").cloned(), mode)
 }
 
 async fn pnl_summary_path(
     State(db): State<SharedDb>,
     Path(id): Path<String>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> (StatusCode, Json<Value>) {
-    pnl_summary_for(&db, Some(id))
+    let mode = match parse_mode(&params) {
+        Ok(m) => m,
+        Err(resp) => return resp,
+    };
+    pnl_summary_for(&db, Some(id), mode)
 }
 
 fn calendar_for(
@@ -327,8 +382,9 @@ fn calendar_for(
     run: Option<String>,
     strategy: Option<String>,
     tz: Option<String>,
+    mode: Option<TradeMode>,
 ) -> (StatusCode, Json<Value>) {
-    let id = match resolve_run_id(db, run) {
+    let id = match resolve_run_id(db, run, mode) {
         Ok(id) => id,
         Err(resp) => return resp,
     };
@@ -383,11 +439,16 @@ async fn calendar_query(
     State(db): State<SharedDb>,
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> (StatusCode, Json<Value>) {
+    let mode = match parse_mode(&params) {
+        Ok(m) => m,
+        Err(resp) => return resp,
+    };
     calendar_for(
         &db,
         params.get("run").cloned(),
         params.get("strategy").cloned(),
         params.get("tz").cloned(),
+        mode,
     )
 }
 
@@ -396,16 +457,25 @@ async fn calendar_path(
     Path(id): Path<String>,
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> (StatusCode, Json<Value>) {
+    let mode = match parse_mode(&params) {
+        Ok(m) => m,
+        Err(resp) => return resp,
+    };
     calendar_for(
         &db,
         Some(id),
         params.get("strategy").cloned(),
         params.get("tz").cloned(),
+        mode,
     )
 }
 
-fn portfolio_for(db: &SharedDb, run: Option<String>) -> (StatusCode, Json<Value>) {
-    let id = match resolve_run_id(db, run) {
+fn portfolio_for(
+    db: &SharedDb,
+    run: Option<String>,
+    mode: Option<TradeMode>,
+) -> (StatusCode, Json<Value>) {
+    let id = match resolve_run_id(db, run, mode) {
         Ok(id) => id,
         Err(resp) => return resp,
     };
@@ -439,32 +509,54 @@ async fn portfolio_query(
     State(db): State<SharedDb>,
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> (StatusCode, Json<Value>) {
-    portfolio_for(&db, params.get("run").cloned())
+    let mode = match parse_mode(&params) {
+        Ok(m) => m,
+        Err(resp) => return resp,
+    };
+    portfolio_for(&db, params.get("run").cloned(), mode)
 }
 
 async fn portfolio_path(
     State(db): State<SharedDb>,
     Path(id): Path<String>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> (StatusCode, Json<Value>) {
-    portfolio_for(&db, Some(id))
+    let mode = match parse_mode(&params) {
+        Ok(m) => m,
+        Err(resp) => return resp,
+    };
+    portfolio_for(&db, Some(id), mode)
 }
 
-fn positions_for(db: &SharedDb, run: Option<String>) -> (StatusCode, Json<Value>) {
-    portfolio_for(db, run)
+fn positions_for(
+    db: &SharedDb,
+    run: Option<String>,
+    mode: Option<TradeMode>,
+) -> (StatusCode, Json<Value>) {
+    portfolio_for(db, run, mode)
 }
 
 async fn positions_query(
     State(db): State<SharedDb>,
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> (StatusCode, Json<Value>) {
-    positions_for(&db, params.get("run").cloned())
+    let mode = match parse_mode(&params) {
+        Ok(m) => m,
+        Err(resp) => return resp,
+    };
+    positions_for(&db, params.get("run").cloned(), mode)
 }
 
 async fn positions_path(
     State(db): State<SharedDb>,
     Path(id): Path<String>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> (StatusCode, Json<Value>) {
-    positions_for(&db, Some(id))
+    let mode = match parse_mode(&params) {
+        Ok(m) => m,
+        Err(resp) => return resp,
+    };
+    positions_for(&db, Some(id), mode)
 }
 
 fn trades_for(
@@ -472,8 +564,9 @@ fn trades_for(
     run: Option<String>,
     cursor: i64,
     limit: i64,
+    mode: Option<TradeMode>,
 ) -> (StatusCode, Json<Value>) {
-    let id = match resolve_run_id(db, run) {
+    let id = match resolve_run_id(db, run, mode) {
         Ok(id) => id,
         Err(resp) => return resp,
     };
@@ -499,6 +592,10 @@ async fn trades_query(
     State(db): State<SharedDb>,
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> (StatusCode, Json<Value>) {
+    let mode = match parse_mode(&params) {
+        Ok(m) => m,
+        Err(resp) => return resp,
+    };
     let cursor = params
         .get("cursor")
         .and_then(|c| c.parse().ok())
@@ -507,7 +604,7 @@ async fn trades_query(
         .get("limit")
         .and_then(|l| l.parse().ok())
         .unwrap_or(200);
-    trades_for(&db, params.get("run").cloned(), cursor, limit)
+    trades_for(&db, params.get("run").cloned(), cursor, limit, mode)
 }
 
 async fn trades_path(
@@ -515,6 +612,10 @@ async fn trades_path(
     Path(id): Path<String>,
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> (StatusCode, Json<Value>) {
+    let mode = match parse_mode(&params) {
+        Ok(m) => m,
+        Err(resp) => return resp,
+    };
     let cursor = params
         .get("cursor")
         .and_then(|c| c.parse().ok())
@@ -523,11 +624,37 @@ async fn trades_path(
         .get("limit")
         .and_then(|l| l.parse().ok())
         .unwrap_or(200);
-    trades_for(&db, Some(id), cursor, limit)
+    trades_for(&db, Some(id), cursor, limit, mode)
 }
 
-async fn strategies(State(db): State<SharedDb>) -> (StatusCode, Json<Value>) {
+async fn strategies(
+    State(db): State<SharedDb>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
+) -> (StatusCode, Json<Value>) {
+    let mode = match parse_mode(&params) {
+        Ok(m) => m,
+        Err(resp) => return resp,
+    };
     let (as_of, list) = with_db(&db, |c| (queries::built_at(c), queries::strategies(c)));
+    // Mode scoping is a display classification over sealed proof states.
+    let allowed: Vec<_> = match mode {
+        None => list,
+        Some(m) => list
+            .into_iter()
+            .filter(|srow| {
+                let proof = with_db(&db, |c| {
+                    c.query_row(
+                        "SELECT proof_state FROM runs WHERE id = ?1",
+                        rusqlite::params![srow.latest_run_id],
+                        |r| r.get::<_, String>(0),
+                    )
+                    .unwrap_or_default()
+                });
+                TradeMode::of_proof_state(&proof) == m
+            })
+            .collect(),
+    };
+    let list = allowed;
     (
         StatusCode::OK,
         Json(envelope(

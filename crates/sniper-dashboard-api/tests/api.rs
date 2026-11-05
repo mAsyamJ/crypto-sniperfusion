@@ -312,3 +312,216 @@ async fn path_aliases_match_query_style() {
     assert_eq!(a, b);
     let _ = HashMap::<String, String>::new();
 }
+
+// ---- DASH-03: PAPER / REAL_MONEY mode isolation (operator-mandated cases) ----
+
+/// Build a run whose sealed proof_state is LIVE_CONFIRMED (the ONLY proof
+/// state that maps to REAL_MONEY). Hand-sealed via the producer rule — the
+/// point under test is the classifier, not the producer.
+async fn live_confirmed_app() -> (axum::Router, String) {
+    let tmp = tempfile::tempdir().unwrap();
+    let corpus = tmp.path().join("corpus");
+    std::fs::create_dir_all(corpus.join("paper")).unwrap();
+    std::fs::create_dir_all(corpus.join("live")).unwrap();
+
+    // A paper (synthetic) run.
+    let oracle = AccountingOracle::new(0);
+    let paper = build_receipt(
+        "wallet_follower_v1",
+        "SYNTHETIC_OR_OBSERVED_QUOTES",
+        "QUOTES_AS_PROVIDED",
+        "signals+quotes",
+        0,
+        &oracle,
+        &Default::default(),
+        0,
+        0,
+        0,
+        0,
+        vec![arm("FOLLOW_DELAY_500MS", -1), s00()],
+        vec![],
+    );
+    write_bundle(&corpus.join("paper"), &paper, "[]", "", "{}").unwrap();
+
+    // A LIVE_CONFIRMED run.
+    let mut live = build_receipt(
+        "live_executor_v1",
+        "MAINNET_EXECUTED",
+        "EXECUTION_CONFIRMED",
+        &"b".repeat(64),
+        0,
+        &oracle,
+        &Default::default(),
+        5_000,
+        0,
+        0,
+        0,
+        vec![
+            ComparisonRow {
+                strategy: "S_LIVE".into(),
+                net_pnl_lamports: 5_000,
+                incremental_net_edge_vs_no_trade: 5_000,
+                max_drawdown_lamports: 0,
+                open_positions: 0,
+                status: "CANDIDATE_FOR_INDEPENDENT_REVIEW".into(),
+            },
+            s00(),
+        ],
+        vec![],
+    );
+    live.proof_state = "LIVE_CONFIRMED".to_string();
+    let live = sniper_strategy::receipt::PnlRunReceiptV2::seal(live);
+    write_bundle(&corpus.join("live"), &live, "", "", "{}").unwrap();
+    std::mem::forget(tmp);
+
+    let conn = open_db(&corpus.join("c.sqlite3")).unwrap();
+    import_corpus(&conn, &Roots::from_dirs([&corpus]), BUILT_AT).unwrap();
+    let live_id: String = conn
+        .query_row(
+            "SELECT id FROM runs WHERE proof_state = 'LIVE_CONFIRMED'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    let paper_id: String = conn
+        .query_row(
+            "SELECT id FROM runs WHERE proof_state != 'LIVE_CONFIRMED'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    (
+        router(Arc::new(Mutex::new(conn))),
+        format!("{live_id}:{paper_id}"),
+    )
+}
+
+/// T-MODE1: runs are classified by their sealed proof state, and each mode
+/// sees ONLY its own runs.
+#[tokio::test]
+async fn t_mode1_runs_scoped_by_proof_state() {
+    let (app, ids) = live_confirmed_app().await;
+    let mut it = ids.split(':');
+    let live_id = it.next().unwrap();
+    let paper_id = it.next().unwrap();
+
+    let (_, paper_runs) = get(&app, "/api/v1/runs?mode=PAPER").await;
+    let paper_ids: Vec<&str> = paper_runs["payload"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r["id"].as_str().unwrap())
+        .collect();
+    assert!(
+        paper_ids.contains(&paper_id),
+        "paper run missing from PAPER scope"
+    );
+    assert!(
+        !paper_ids.contains(&live_id),
+        "live run leaked into PAPER scope"
+    );
+
+    let (_, real_runs) = get(&app, "/api/v1/runs?mode=REAL_MONEY").await;
+    let real_ids: Vec<&str> = real_runs["payload"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r["id"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        real_ids,
+        vec![live_id],
+        "REAL_MONEY scope must contain exactly the LIVE_CONFIRMED run"
+    );
+    assert_eq!(real_runs["payload"][0]["mode"], "REAL_MONEY");
+    assert_eq!(real_runs["payload"][0]["proof_state"], "LIVE_CONFIRMED");
+
+    let (_, all) = get(&app, "/api/v1/runs").await;
+    assert_eq!(all["payload"].as_array().unwrap().len(), 2);
+
+    // Invalid mode values are client errors, never silently ignored.
+    let (code, _) = get(&app, "/api/v1/runs?mode=REAL").await;
+    assert_eq!(code, StatusCode::BAD_REQUEST);
+}
+
+/// T-MODE2: direct API requests cannot bypass isolation — a paper run id
+/// with mode=REAL_MONEY is refused on EVERY run-scoped endpoint; the same
+/// for the live id under PAPER.
+#[tokio::test]
+async fn t_mode2_direct_api_cannot_bypass() {
+    let (app, ids) = live_confirmed_app().await;
+    let mut it = ids.split(':');
+    let live_id = it.next().unwrap();
+    let paper_id = it.next().unwrap();
+
+    for uri in [
+        format!("/api/v1/pnl/summary?run={paper_id}&mode=REAL_MONEY"),
+        format!("/api/v1/pnl/calendar?run={paper_id}&strategy=S&mode=REAL_MONEY"),
+        format!("/api/v1/portfolio?run={paper_id}&mode=REAL_MONEY"),
+        format!("/api/v1/positions?run={paper_id}&mode=REAL_MONEY"),
+        format!("/api/v1/trades?run={paper_id}&mode=REAL_MONEY"),
+        format!("/api/v1/runs/{paper_id}/pnl/summary?mode=REAL_MONEY"),
+    ] {
+        let (code, body) = get(&app, &uri).await;
+        assert_eq!(code, StatusCode::NOT_FOUND, "{uri}");
+        assert_eq!(body["error"], "mode isolation refused this run", "{uri}");
+    }
+    let (code, _) = get(
+        &app,
+        &format!("/api/v1/pnl/summary?run={live_id}&mode=PAPER"),
+    )
+    .await;
+    assert_eq!(code, StatusCode::NOT_FOUND);
+}
+
+/// T-MODE3: proof states are never rewritten — a synthetic run stays
+/// SYNTHETIC in every scope; classification copies, never edits.
+#[tokio::test]
+async fn t_mode3_evidence_labels_never_rewritten() {
+    let (app, ids) = live_confirmed_app().await;
+    let paper_id = ids.split(':').nth(1).unwrap();
+    let (_, detail) = get(&app, &format!("/api/v1/runs/{paper_id}")).await;
+    assert_eq!(detail["payload"]["proof_state"], "SYNTHETIC");
+    assert_eq!(detail["payload"]["mode"], "PAPER");
+    // And the paper run is still servable in its own scope.
+    let (code, _) = get(
+        &app,
+        &format!("/api/v1/pnl/summary?run={paper_id}&mode=PAPER"),
+    )
+    .await;
+    assert_eq!(code, StatusCode::OK);
+}
+
+/// T-MODE4: paper PnL never contributes to REAL_MONEY aggregates —
+/// strategies?mode=REAL_MONEY lists only the live run's rows.
+#[tokio::test]
+async fn t_mode4_no_cross_mode_aggregation() {
+    let (app, _ids) = live_confirmed_app().await;
+    let (_, real) = get(&app, "/api/v1/strategies?mode=REAL_MONEY").await;
+    let strategies: Vec<&str> = real["payload"]["strategies"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s["strategy"].as_str().unwrap())
+        .collect();
+    assert!(strategies.contains(&"S_LIVE"));
+    assert!(
+        !strategies.iter().any(|s| s.starts_with("FOLLOW_DELAY")),
+        "paper arms leaked into REAL_MONEY strategies"
+    );
+
+    let (_, paper) = get(&app, "/api/v1/strategies?mode=PAPER").await;
+    let paper_strategies: Vec<&str> = paper["payload"]["strategies"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s["strategy"].as_str().unwrap())
+        .collect();
+    assert!(paper_strategies
+        .iter()
+        .any(|s| s.starts_with("FOLLOW_DELAY")));
+    assert!(
+        !paper_strategies.contains(&"S_LIVE"),
+        "live strategy leaked into PAPER"
+    );
+}

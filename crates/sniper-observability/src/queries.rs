@@ -58,8 +58,47 @@ impl<T> Stamped<T> {
     }
 }
 
+/// Presentation-level trading mode (operator's DASH-03 contract). Derived
+/// ONLY from the sealed `proof_state`: `LIVE_CONFIRMED` is the sole proof
+/// state that means real money (evidence ladder, `docs/GLOSSARY.md`).
+/// Everything else — SYNTHETIC, FORK_MECHANICS, SHADOW_ESTIMATE — is paper.
+/// The mapping is a display classification; the underlying evidence labels
+/// are never rewritten.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TradeMode {
+    Paper,
+    RealMoney,
+}
+
+impl TradeMode {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            TradeMode::Paper => "PAPER",
+            TradeMode::RealMoney => "REAL_MONEY",
+        }
+    }
+
+    /// Parse the API parameter form; anything else is a client error.
+    pub fn parse(s: &str) -> Option<Self> {
+        match s {
+            "PAPER" => Some(TradeMode::Paper),
+            "REAL_MONEY" => Some(TradeMode::RealMoney),
+            _ => None,
+        }
+    }
+
+    pub fn of_proof_state(proof_state: &str) -> Self {
+        if proof_state == "LIVE_CONFIRMED" {
+            TradeMode::RealMoney
+        } else {
+            TradeMode::Paper
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct RunIndexEntry {
+    pub mode: TradeMode,
     pub id: String,
     pub engine: String,
     pub evidence_class: String,
@@ -79,6 +118,11 @@ pub fn built_at(conn: &Connection) -> String {
 }
 
 pub fn list_runs(conn: &Connection) -> Vec<RunIndexEntry> {
+    list_runs_in(conn, None)
+}
+
+/// Mode-scoped run index (DASH-03: isolation enforced at the query layer).
+pub fn list_runs_in(conn: &Connection, mode: Option<TradeMode>) -> Vec<RunIndexEntry> {
     let mut stmt = match conn.prepare(
         "SELECT id, engine, evidence_class, proof_state, completeness, verdict, artifact_sha256
          FROM runs ORDER BY id",
@@ -87,17 +131,62 @@ pub fn list_runs(conn: &Connection) -> Vec<RunIndexEntry> {
         Err(_) => return Vec::new(),
     };
     let rows = stmt.query_map([], |r| {
-        Ok(RunIndexEntry {
-            id: r.get(0)?,
-            engine: r.get(1)?,
-            evidence_class: r.get(2)?,
-            proof_state: r.get(3)?,
-            completeness: r.get(4)?,
-            verdict: r.get(5)?,
-            artifact_sha256: r.get(6)?,
-        })
+        let proof_state: String = r.get(3)?;
+        Ok((
+            RunIndexEntry {
+                mode: TradeMode::of_proof_state(&proof_state),
+                id: r.get(0)?,
+                engine: r.get(1)?,
+                evidence_class: r.get(2)?,
+                proof_state,
+                completeness: r.get(4)?,
+                verdict: r.get(5)?,
+                artifact_sha256: r.get(6)?,
+            },
+            (),
+        ))
     });
-    rows.map(|it| it.flatten().collect()).unwrap_or_default()
+    rows.map(|it| {
+        it.flatten()
+            .filter(|(entry, _)| mode.is_none_or(|m| entry.mode == m))
+            .map(|(entry, _)| entry)
+            .collect()
+    })
+    .unwrap_or_default()
+}
+
+/// Mode guard for run-scoped queries (DASH-03 T-MODE*): a run whose sealed
+/// proof state belongs to the other mode is REFUSED — paper records can
+/// never be served into a REAL_MONEY scope, and vice versa.
+pub fn ensure_run_mode(
+    conn: &Connection,
+    run_id: &str,
+    mode: TradeMode,
+) -> Result<(), (DataStatus, String)> {
+    let proof_state: Option<String> = conn
+        .query_row(
+            "SELECT proof_state FROM runs WHERE id = ?1",
+            params![run_id],
+            |r| r.get(0),
+        )
+        .ok();
+    match proof_state {
+        None => Err((DataStatus::Unavailable, format!("unknown run id {run_id}"))),
+        Some(ps) => {
+            let actual = TradeMode::of_proof_state(&ps);
+            if actual == mode {
+                Ok(())
+            } else {
+                Err((
+                    DataStatus::Unavailable,
+                    format!(
+                        "run {run_id} is sealed {ps} → {actual:?} scope; refused in {} scope                          (mode isolation: paper and real money never mix)",
+                        mode.as_str()
+                    ),
+                ))
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
