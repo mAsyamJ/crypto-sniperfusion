@@ -32,6 +32,8 @@ Read order and precedence are defined in the `AGENTS.md` header. Summary:
 | `SOUL.md` | Doctrine: winning definition, Ten Laws, strategy frontier, gates G-A…G-G | LIVING (deliberate amendment only; append-only anchors) |
 | `SECURITY.md` | Security policy: key hygiene, reporting, CI enforcement, trading-safety invariants | LIVING |
 | `CONTRIBUTING.md` | Human-facing mirror of the operating rules | LIVING |
+| `GOAL_PLAN_PROMPT.md` | Owner-authorized D→M→S→H session mission; one bounded package per invocation | LIVING OPERATOR WORKFLOW (baseline `adb5760`) |
+| `SESSION_LAUNCHER_PROMPT.md` | Root-level local agent entrypoint that loads the goal plan | LIVING OPERATOR WORKFLOW (baseline `adb5760`) |
 
 ## docs/ — engineering and governance
 
@@ -156,7 +158,7 @@ Routed per `AGENTS.md` §8; validated by `python3 harness/agentctl.py lint-skill
 ## Anti-sprawl rules
 
 1. **One job per document.** If an existing doc already does the job, extend it instead of adding a near-duplicate.
-2. **No new master prompts.** The `*_MISSION*.md` / `*_PROMPT*.md` files in this repo are point-in-time mission artifacts. New missions are dated goal plans under `docs/`, not new "master" files.
+2. **No new master prompts by default.** The root `GOAL_PLAN_PROMPT.md` + `SESSION_LAUNCHER_PROMPT.md` pair is an explicit owner-approved exception (2026-11-05), solely a bounded session workflow. It never supersedes SOUL/AGENTS safety or living GOALS. Further missions use dated goal plans under `docs/`, not additional master prompts.
 3. **Point-in-time docs carry a baseline SHA and status header** and are never silently rewritten.
 4. **Every new doc lands in this index in the same PR.** A doc missing from this index is a bug.
 5. **Deprecation is explicit.** Add `Status: HISTORICAL (superseded by <file>)` under the title; do not delete history.
