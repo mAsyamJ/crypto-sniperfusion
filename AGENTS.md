@@ -75,3 +75,7 @@ The next bounded work package is in `docs/NEXT_GOAL_H8_G0.md`. Preserve existing
 ## Profit-first H8 amendment (2026-11-04)
 
 The owner priority is **net realizable P&L after all trading/operating costs and risk controls**. Read `docs/PROFIT_FIRST_GOAL_PLAN.md` and `harness/docs/PROFIT_FIRST_AGENT_MISSION.md`; invoke `.agents/skills/sniper-pnl-architect/SKILL.md` for financial reporting or strategy selection. Reuse existing H7 independent oracle (`sniper-strategy/src/oracle.rs`) and evaluator; do not rewrite or double-count. Separate synthetic/fork/shadow/confirmed trading receipts, ensure realistic executable exit marks, isolate external deposits/withdrawals and SOL/USD beta, compare matched S00 NO_TRADE and delayed-entry strategies, and fail closed on missing real fees/reserves. H8 must seek evidence for positive net edge, not promise profits. The P&L V2 requirements are not implemented merely because this plan exists.
+
+## Wallet Alpha integration (2026-11-04)
+
+Read `docs/WALLET_ALPHA_UPSTREAM_AUDIT.md`, `docs/WALLET_ALPHA_GOAL_PLAN.md`, and `harness/docs/WALLET_ALPHA_AGENT_MISSION.md` before wallet-copy, social hype or strategy alpha work. Use `.agents/skills/wallet-alpha-solana-tracker/SKILL.md`. Preserve Rust PF1 `oracle.rs` as the sole portfolio accounting truth; the offline Python wallet-alpha lab is a research contract test, not a second financial ledger. Treat successful leader trades as *candidate* signals, not guaranteed follower gains, and do not reveal/rotate existing RPC credentials.

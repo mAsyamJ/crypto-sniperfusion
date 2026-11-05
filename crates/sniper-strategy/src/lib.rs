@@ -16,6 +16,7 @@ pub mod engine;
 pub mod eval;
 pub mod exit;
 pub mod fees;
+pub mod follower;
 pub mod observation;
 pub mod oracle;
 pub mod policies;

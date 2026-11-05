@@ -14,6 +14,7 @@ pub mod lifecycle;
 pub mod paper;
 pub mod rpc_probe;
 pub mod runner;
+pub mod wallet_observer;
 
 pub use bus::{Priority, PriorityBus, PublishOutcome};
 pub use capability::{acquire_live, LiveCapability, LiveGateError, LiveGateInputs};

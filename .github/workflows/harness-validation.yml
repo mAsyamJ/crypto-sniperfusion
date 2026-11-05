@@ -51,3 +51,21 @@ jobs:
           python3 harness/research_batch.py batch --events harness/fixtures/research/synthetic_lifecycle.jsonl --out /tmp/snf-synthetic-batch-ci.json
           python3 harness/research_batch.py diagnose --report /tmp/snf-synthetic-batch-ci.json
           python3 -c 'import json; x=json.load(open("/tmp/snf-synthetic-batch-ci.json")); assert x["promotable"] is False and len(x["results"]) == 11'
+
+      - name: Harness2 integration tests (deterministic; skip when not installed)
+        run: |
+          if [ -x .venv-harness2/bin/python ] && [ -d .external/harness2/.git ]; then
+            python3 -m unittest discover -s integrations/harness2/tests -v
+          else
+            echo "[SKIP] harness2 not installed in CI (expected on PRs); offline contract subset only"
+            python3 - <<'PY'
+          import unittest, sys
+          sys.path.insert(0, 'integrations/harness2/tests')
+          import test_adapter
+          suite = unittest.TestLoader().loadTestsFromTestCase(test_adapter.AdapterContractOffline)
+          ok = unittest.TextTestRunner(verbosity=2).run(suite).wasSuccessful()
+          sys.exit(0 if ok else 1)
+          PY
+          fi
+        env:
+          LIVE_TRADING_ENABLED: "false"

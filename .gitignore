@@ -1,4 +1,6 @@
 /upstream/
+/.external/
+/.venv-harness2/
 /target/
 /.venv/
 /.env

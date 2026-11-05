@@ -24,6 +24,12 @@ Living document; update at every milestone close. Format: state, evidence pointe
 | PF1 — P&L V2 (reconciled equity, waterfall, deterministic receipts) | **COMPLETE** (2026-11-04; oracle round-trip lamport-exact; deposits/attribution/slippage; V2 CLI bundle; 9 mandated tests; S00 dominates at observed fees) | `docs/evidence/PF1.md` |
 | G0 — block-verified real launch cohort | **MECHANICS UNBLOCKED** (2026-11-04; collector version-1 fix + checkpoint/budgets; THREE COMPLETE windows 3/7/41 slots; zero creates = 87% pump-tx failure storm, market fact; scale capture open) | `docs/evidence/G0-H8-session.md` |
 | H8/PF5 — research registry + one-use holdout | **COMPLETE (machinery)** (2026-11-04; hash-chained preregistration; structural 20-trial bound; cross-process one-use holdout; BH/Bonferroni; 12 tests) | `docs/evidence/G0-H8-session.md` |
+| WA0 — wallet-alpha audit + offline lab | **COMPLETE** (2026-11-04; upstream license map, architecture, synthetic negative-control evaluator) | `docs/WALLET_ALPHA_UPSTREAM_AUDIT.md` |
+| WA1–WA3 — wallet normalization, leader P&L, delayed follower | **COMPLETE (code + live smoke)** (2026-11-04; 306/306 Rust, 114 Python; real observed leader −4.96 SOL, unknown-basis wallets exactly 0; follower loses at all delays vs S00; nothing promotable) | `docs/evidence/WA1-WA3.md` |
+| WA-int — million + handi-cat deep integration | **COMPLETE** (2026-11-04; million cloned MIT-pinned @c89ad07c, infra-facts + cross-token-bot heuristic + blocklist adopted with attribution; handi-cat clean-room concepts → offline wallet_watch.py alert layer; fixed-60s copyability replaced by WA3 multi-delay per plan; 120 Python tests) | `docs/WALLET_ALPHA_UPSTREAM_AUDIT.md` §amendment |
+| H2 — Google Harness² native integration | **COMPLETE (deterministic channel)** (2026-11-05; pinned .external checkout + uv venv, credential-free demo executed, real BenchmarkAdapter recursion verified 2/2, experience library persisted, agentctl harness2 group, H8 bridge, security scrubber + worker prep; model-backed BLOCKED) | `docs/evidence/HARNESS2-INTEGRATION.md` |
+| WA-full — full-repo million features + Dorado differential | **COMPLETE** (2026-11-05; owner graph + consensus/ladder signals, oracle worked-examples, Dorado cross-check tests, feature register; 312/312 Rust) | `docs/evidence/HARNESS2-INTEGRATION.md` §D |
+| W01 — naive wallet-follow on real signals | **EXECUTED, REJECTED** (2026-11-05; 3 real buy signals, all 6 delays net −250,308 lamports vs S00 = 0; H-0001 preregistered first; EDGE_NOT_DEMONSTRATED) | `docs/evidence/HARNESS2-INTEGRATION.md` §E |
 | M4 — Chainstack parity scope closure | PLANNED | — |
 | M5 — Token intelligence + DevFlowMonitor | PLANNED | — |
 | M6 — Multi-DEX + copy trading | PLANNED | — |
@@ -151,3 +157,18 @@ Next actions: (1) operator RPC tier that serves `getBlock` → rerun collector f
 ## PF/H8 session record (2026-11-04, branch `codex/profit-first-h8-pnl-goal-20261104`, local only)
 
 PF0 8653d76/ba20ded · PF1 2ed8e8d · G0 aaa881c · H8 e2ab4e9. Fee truth now ON-CHAIN-OBSERVED (95+30 curve; tiered canonical PumpSwap 125→30 bps); oracle reconciles Engine-B cash to the lamport on fee-bearing round trips; PnlRunReceiptV2 bundles deterministic and nonpromotable; G0 collector fixed (root cause: our maxSupportedTransactionVersion=0) with three COMPLETE windows; research registry enforces one-use holdout across processes. All strategies REJECTED on synthetic evidence; S00 NO_TRADE dominates. Next: reserve-snapshot capture for Engine B on real data; longer G0 windows in calmer periods; first registered hypothesis H-0001 execution when a real cohort exists; H3 shadow still NOT_STARTED; no push without owner authorization.
+
+
+## Wallet Alpha WA1–WA3 session record (2026-11-04, branch `codex/wallet-alpha-upstream-integration-20261104`, local only)
+
+c0270c0 WA1 owner-verified balance-delta normalizer (13-test fixture matrix, dedup, conservation) · 486e20b WA2 `sniper wallet-pnl` via PF1 oracle + roster discovery/ranking with honest unknown-history accounting · 5a54d40 WA3 delayed follower (6 delays, leader-price unreachable, matched S00). Live read-only validation on 12 real mainnet txs (congestion storm: 97% pump-tx failure). All observed leaders lose or are unknown-basis; all follower delay arms lose; S00 dominates everywhere. MIT references (Dorado/Solsonar/million) reimplemented originally. Next: calm-window cohort → W02 copyability-ranked follow vs S00/S02/RX through the H8 preregistration path.
+
+
+## Wallet Alpha source integration (2026-11-04, same branch)
+
+Deep source-read of Kelows/million (MIT, now cloned under upstream/ pinned c89ad07c) and DracoR22/handi-cat (NO license — temp-clone outside repo, clean-room concepts only). Adopted: million's INFRA_ADDRESSES facts (Raydium AMM v4/CPMM authorities, pump fee recipient, Jupiter referral, quote mints), the find-infra cross-token-top-buyer bot heuristic, operator blocklist; handi-cat's subscription UX reimplemented offline as harness/wallet_watch.py (immutable alert ledger, no network/Telegram). Explicitly rejected-by-design: million's fixed 60-second candle + 6-trade copyability measurement (already superseded by WA3's 500 ms–60 s multi-delay follower). high-win-rate suspicion flag reserved for WA4. Manifest + audit amendment updated.
+
+
+## Harness² + full-repo integration session (2026-11-05, same branch)
+
+9521aec clones/ADR-0012 · 804e957 REAL harness2 install + demo receipt · 44c87d8 adapter (13-method contract, deterministic recursion 2/2, experience library persisted) · 940b365 contract fixes · b3d27a1 harness2ctl + agentctl + H8 bridge + security + worker prep · 33f3ce6 million owner-graph/consensus/ladder + oracle worked-examples · 4faebcb Dorado differentials + feature register. W01 strategy run executed on REAL fresh capture (calmer window, 270/1000 successful): S00 dominates all delays; H-0001 preregistered before evaluation. Model-backed harness2 BLOCKED behind the prepared isolated worker. All 19 skills lint-pass.

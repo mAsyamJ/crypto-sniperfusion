@@ -361,3 +361,47 @@ fn research_emits_pnl_v2_bundle_with_oracle_reconciliation() {
         serde_json::from_str(&std::fs::read_to_string(bundle2.join("run.json")).unwrap()).unwrap();
     assert_eq!(run["receipt_sha256"], run2["receipt_sha256"]);
 }
+
+#[test]
+fn wallet_follow_prices_at_delay_and_refuses_invalid() {
+    let dir = tempfile::tempdir().unwrap();
+    let signals = dir.path().join("signals.jsonl");
+    let quotes = dir.path().join("quotes.jsonl");
+    std::fs::write(&signals, "{\"signal_id\":\"s1\",\"wallet\":\"W\",\"mint\":\"M\",\"leader_side\":\"Buy\",\"observed_at_ms\":100,\"quote_available_at_ms\":100}\n\
+                              {\"signal_id\":\"s2\",\"wallet\":\"W\",\"mint\":\"M\",\"leader_side\":\"Sell\",\"observed_at_ms\":200,\"quote_available_at_ms\":200}\n").unwrap();
+    std::fs::write(&quotes, "{\"mint\":\"M\",\"at_ms\":0,\"price_lamports_per_token\":1000,\"exit_liquidity_lamports\":10000000}\n\
+                             {\"mint\":\"M\",\"at_ms\":50000,\"price_lamports_per_token\":500,\"exit_liquidity_lamports\":10000000}\n").unwrap();
+    let out = dir.path().join("bundle");
+    let status = Command::new(bin())
+        .arg("wallet-follow")
+        .arg("--signals")
+        .arg(&signals)
+        .arg("--quotes")
+        .arg(&quotes)
+        .arg("--out-dir")
+        .arg(&out)
+        .env("LIVE_TRADING_ENABLED", "false")
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let run: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(out.join("run.json")).unwrap()).unwrap();
+    assert_eq!(run["promotable"], false);
+    let rows = run["comparison"].as_array().unwrap();
+    let s00 = rows.iter().find(|r| r["strategy"] == "S00").unwrap();
+    assert_eq!(s00["net_pnl_lamports"], 0);
+    // Every delay arm prices entry at/after observed+delay from the
+    // timeline; with these quotes all arms lose or refuse.
+    for row in rows {
+        if row["strategy"] != "S00" {
+            assert!(row["net_pnl_lamports"].as_i64().unwrap() <= 0);
+        }
+    }
+    // Leader side != Buy must refuse.
+    let trades = std::fs::read_to_string(out.join("trades.jsonl")).unwrap();
+    let arms: Vec<serde_json::Value> = serde_json::from_str(&trades).unwrap();
+    assert_eq!(arms.len(), 6, "six delay arms");
+    for arm in &arms {
+        assert_eq!(arm["followed_entries"], 1, "only the Buy signal followed");
+    }
+}

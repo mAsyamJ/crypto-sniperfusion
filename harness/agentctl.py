@@ -140,8 +140,20 @@ def main(argv=None):
     demo = sub.add_parser("research-demo", help="Bounded offline synthetic demonstration")
     demo.add_argument("--cycles", type=int, default=3)
     demo.add_argument("--out", required=True, help="New receipt under harness/runs/")
+    h2 = sub.add_parser("harness2", help="Google Harness2 integration (doctor|demo|research|status|report)")
+    h2.add_argument("harness2_command", help="harness2ctl subcommand")
+    h2.add_argument("harness2_args", nargs=argparse.REMAINDER, help="forwarded args")
     args = parser.parse_args(argv)
     try:
+        if args.command == "harness2":
+            # Passthrough to harness/harness2ctl.py with the SAME sanitized
+            # child env used elsewhere (never forwards RPC/keys).
+            sub_argv = [args.harness2_command] + args.harness2_args
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "harness" / "harness2ctl.py")] + sub_argv,
+                cwd=ROOT, env=safe_child_env(), timeout=900,
+            )
+            return result.returncode
         if args.command == "doctor":
             return doctor()
         if args.command == "commands":

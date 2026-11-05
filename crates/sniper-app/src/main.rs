@@ -87,6 +87,29 @@ enum Command {
         #[arg(long, value_name = "DIR")]
         out_dir: Option<PathBuf>,
     },
+    /// WA1/WA2: normalize wallet transaction receipts through the Rust
+    /// wallet_observer and compute the wallet's historical P&L through
+    /// the independent PF1 oracle, emitting a PnlRunReceiptV2 bundle.
+    /// Read-only offline analysis of already-fetched receipts.
+    WalletPnl {
+        #[arg(long, value_name = "JSON")]
+        transactions: PathBuf,
+        #[arg(long, value_name = "PUBKEY")]
+        wallet: String,
+        #[arg(long, value_name = "DIR")]
+        out_dir: PathBuf,
+    },
+    /// WA3: delayed wallet-follower paper trading with matched S00
+    /// comparison. Offline, deterministic; quotes come ONLY from the
+    /// provided price timeline (never a leader price).
+    WalletFollow {
+        #[arg(long, value_name = "JSONL")]
+        signals: PathBuf,
+        #[arg(long, value_name = "JSONL")]
+        quotes: PathBuf,
+        #[arg(long, value_name = "DIR")]
+        out_dir: PathBuf,
+    },
     /// Live trading. Requires a `live`-feature build plus four runtime gates.
     Live {
         #[arg(long)]
@@ -150,6 +173,16 @@ fn main() -> ExitCode {
             snapshots,
             out_dir,
         } => run_research(events, out, snapshots, out_dir),
+        Command::WalletPnl {
+            transactions,
+            wallet,
+            out_dir,
+        } => run_wallet_pnl(transactions, wallet, out_dir),
+        Command::WalletFollow {
+            signals,
+            quotes,
+            out_dir,
+        } => run_wallet_follow(signals, quotes, out_dir),
         Command::Live {
             config,
             kill_switch_path,
@@ -423,6 +456,331 @@ fn run_research(
             "engine": "ProtocolEconomicV1",
         });
     }
+    Ok(serde_json::to_string_pretty(&summary).unwrap())
+}
+
+/// WA1/WA2 wallet historical P&L: normalize receipts (Rust wallet_observer)
+/// -> observed-amount ExecutionRecords -> independent PF1 oracle -> V2 bundle.
+fn run_wallet_pnl(
+    transactions: PathBuf,
+    wallet: String,
+    out_dir: PathBuf,
+) -> Result<String, String> {
+    use sniper_runtime::wallet_observer::{normalize_transaction, Side};
+    use sniper_strategy::engine::protocol::ExecutionRecord;
+    use sniper_strategy::oracle::AccountingOracle;
+    use sniper_strategy::receipt::{build_receipt, write_bundle, ComparisonRow};
+
+    let live = std::env::var("LIVE_TRADING_ENABLED").unwrap_or_default();
+    if !matches!(live.as_str(), "" | "false" | "0") {
+        return Err("wallet-pnl refuses LIVE_TRADING_ENABLED".into());
+    }
+    let text = std::fs::read_to_string(&transactions)
+        .map_err(|e| format!("read {}: {e}", transactions.display()))?;
+    let txs: Vec<serde_json::Value> = serde_json::from_str(&text)
+        .map_err(|e| format!("transactions file must be a JSON array: {e}"))?;
+
+    let starting_cash: u64 = 0; // observed amounts flow; opening balances unknown
+    let mut records: Vec<ExecutionRecord> = Vec::new();
+    let mut skipped = 0u64;
+    let mut incomplete = 0u64;
+    for tx in &txs {
+        for event in normalize_transaction(tx, &wallet).map_err(|e| e.to_string())? {
+            if event.coverage != "COMPLETE" {
+                incomplete += 1;
+                continue;
+            }
+            let sig = event.signature.clone();
+            match event.side {
+                Side::Buy => records.push(ExecutionRecord::BuyFill {
+                    event_id: sig,
+                    mint: event.mint.clone(),
+                    slot: event.slot,
+                    spend_lamports: (-event.raw_quote_delta) as u64,
+                    tokens_out: event.raw_token_delta as u64,
+                    protocol_fee_lamports: 0,
+                    creator_fee_lamports: 0,
+                    lp_fee_lamports: 0,
+                    network_fee_lamports: event.network_fee,
+                    priority_fee_lamports: 0,
+                    tip_lamports: 0,
+                    rent_lamports: 0,
+                    slippage_lamports: 0,
+                    fee_synthetic_fallback: false,
+                }),
+                Side::Sell => records.push(ExecutionRecord::SellFill {
+                    event_id: sig,
+                    mint: event.mint.clone(),
+                    slot: event.slot,
+                    tokens_in: (-event.raw_token_delta) as u64,
+                    quote_out_net: event.raw_quote_delta as u64,
+                    protocol_fee_lamports: 0,
+                    creator_fee_lamports: 0,
+                    lp_fee_lamports: 0,
+                    network_fee_lamports: event.network_fee,
+                    priority_fee_lamports: 0,
+                    tip_lamports: 0,
+                    rent_recovered_lamports: 0,
+                    slippage_lamports: 0,
+                    fee_synthetic_fallback: false,
+                }),
+                _ => {
+                    skipped += 1;
+                }
+            }
+        }
+    }
+    // Observed amounts: records already net of venue fees; ingest
+    // sequentially with deposit-backed cash (opening balances unknown ->
+    // start 0; deposits represent unobserved earlier capital, excluded
+    // from P&L by net_pnl).
+    let mut ledger = AccountingOracle::new(starting_cash);
+    let mut deposits_total = 0u64;
+    let mut opening_inventory_events = 0u64;
+    for record in &records {
+        let needed = match record {
+            ExecutionRecord::BuyFill {
+                spend_lamports,
+                network_fee_lamports,
+                ..
+            } => spend_lamports + network_fee_lamports,
+            _ => 0,
+        };
+        if (ledger.cash() as u128) < needed as u128 {
+            let top_up = needed - ledger.cash();
+            ledger
+                .post_deposit(top_up, "unobserved opening capital")
+                .map_err(|e| e.to_string())?;
+            deposits_total += top_up;
+        }
+        // Sells of tokens acquired BEFORE the observed window: the oracle
+        // refuses (fail closed) — record the shortfall as unobserved
+        // opening inventory (equity-backed), never as a invented trade.
+        if let ExecutionRecord::SellFill {
+            mint,
+            tokens_in,
+            quote_out_net,
+            ..
+        } = record
+        {
+            let held: u64 = ledger.lots_for(mint).iter().map(|l| l.tokens).sum();
+            if held < *tokens_in {
+                // Unknown basis: assume basis == proceeds so this sell
+                // contributes ZERO realized P&L (disclosed in limitations).
+                ledger
+                    .post_opening_inventory(mint, tokens_in - held, *quote_out_net)
+                    .map_err(|e| e.to_string())?;
+                opening_inventory_events += 1;
+            }
+        }
+        ledger
+            .ingest("leader", std::slice::from_ref(record))
+            .map_err(|e| e.to_string())?;
+    }
+    if !ledger.verify_conservation().is_ok() {
+        return Err("oracle conservation failed".into());
+    }
+    let marks = std::collections::HashMap::new();
+    let realized = *ledger
+        .trial_balance()
+        .get(&sniper_strategy::oracle::Account::RealizedPnl)
+        .unwrap_or(&0) as i64;
+    let open_lots: Vec<String> = ledger
+        .trial_balance()
+        .keys()
+        .filter_map(|a| match a {
+            sniper_strategy::oracle::Account::TokenInventory { mint } => Some(mint.clone()),
+            _ => None,
+        })
+        .collect();
+    let net = ledger.net_pnl(starting_cash, &marks);
+    let receipt = build_receipt(
+        "wallet_observer_v1",
+        "MAINNET_READ_ONLY_OBSERVED",
+        if incomplete == 0 && skipped == 0 {
+            "OBSERVED_WINDOW"
+        } else {
+            "OBSERVED_WINDOW_PARTIAL"
+        },
+        "live-tx-receipts",
+        starting_cash,
+        &ledger,
+        &marks,
+        realized,
+        0,
+        open_lots.len() as u64,
+        0,
+        vec![ComparisonRow {
+            strategy: "LEADER".into(),
+            net_pnl_lamports: net,
+            incremental_net_edge_vs_no_trade: net,
+            max_drawdown_lamports: 0,
+            open_positions: open_lots.len() as u64,
+            status: "OBSERVED".into(),
+        }],
+        vec![
+            "observed-amount accounting: venue fees are embedded in the observed quote flow (disclosed, not re-subtracted)".into(),
+            "opening balances unknown: unobserved capital appears as deposits (excluded from P&L)".into(),
+            format!("open positions marked at ZERO (conservative): {open_lots:?}"),
+            format!("skipped non-swap events: {skipped}; incomplete-history events: {incomplete}; unobserved opening-inventory adjustments: {opening_inventory_events}"),
+        ],
+    );
+    let run = write_bundle(&out_dir, &receipt, "", "", "{}").map_err(|e| e.to_string())?;
+    let summary = serde_json::json!({
+        "out": run.display().to_string(),
+        "wallet": wallet,
+        "transactions": txs.len(),
+        "records": records.len(),
+        "skipped": skipped,
+        "incomplete": incomplete,
+        "unobserved_deposits_lamports": deposits_total,
+        "unobserved_opening_inventory_events": opening_inventory_events,
+        "net_pnl_lamports": net,
+        "receipt_sha256": receipt.receipt_sha256,
+        "nonpromotable": true,
+    });
+    Ok(serde_json::to_string_pretty(&summary).unwrap())
+}
+
+/// WA3 delayed follower: signals + a deterministic quote timeline ->
+/// per-delay portfolios (leader price never used) + matched S00 rows.
+fn run_wallet_follow(
+    signals_path: PathBuf,
+    quotes_path: PathBuf,
+    out_dir: PathBuf,
+) -> Result<String, String> {
+    use sniper_strategy::follower::{
+        run_follower, DelayPricer, DelayQuote, FollowerConfig, WalletSignal,
+    };
+    use sniper_strategy::receipt::{build_receipt, write_bundle, ComparisonRow};
+
+    let live = std::env::var("LIVE_TRADING_ENABLED").unwrap_or_default();
+    if !matches!(live.as_str(), "" | "false" | "0") {
+        return Err("wallet-follow refuses LIVE_TRADING_ENABLED".into());
+    }
+    let signals_text = std::fs::read_to_string(&signals_path)
+        .map_err(|e| format!("read {}: {e}", signals_path.display()))?;
+    let mut signals = Vec::new();
+    for (index, line) in signals_text.lines().enumerate() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let signal: WalletSignal =
+            serde_json::from_str(line).map_err(|e| format!("signal line {}: {e}", index + 1))?;
+        signals.push(signal);
+    }
+    let quotes_text = std::fs::read_to_string(&quotes_path)
+        .map_err(|e| format!("read {}: {e}", quotes_path.display()))?;
+    // Quotes JSONL rows: {"mint", "at_ms", "price_lamports_per_token", "exit_liquidity_lamports"}
+    #[derive(serde::Deserialize)]
+    struct QuoteRow {
+        mint: String,
+        at_ms: u64,
+        price_lamports_per_token: u64,
+        exit_liquidity_lamports: u64,
+    }
+    let mut timeline: std::collections::BTreeMap<String, Vec<(u64, u64, u64)>> =
+        std::collections::BTreeMap::new();
+    for (index, line) in quotes_text.lines().enumerate() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let row: QuoteRow =
+            serde_json::from_str(line).map_err(|e| format!("quote line {}: {e}", index + 1))?;
+        timeline.entry(row.mint).or_default().push((
+            row.at_ms,
+            row.price_lamports_per_token,
+            row.exit_liquidity_lamports,
+        ));
+    }
+    for rows in timeline.values_mut() {
+        rows.sort();
+    }
+    struct TimelinePricer(std::collections::BTreeMap<String, Vec<(u64, u64, u64)>>);
+    impl DelayPricer for TimelinePricer {
+        fn quote_at(&self, mint: &str, at_ms: u64) -> Option<DelayQuote> {
+            self.0
+                .get(mint)?
+                .iter()
+                .rev()
+                .find(|(t, _, _)| *t <= at_ms)
+                .map(|(_, p, l)| DelayQuote {
+                    price_lamports_per_token: *p,
+                    exit_liquidity_lamports: *l,
+                })
+        }
+        fn next_quote_at(&self, mint: &str, at_ms: u64) -> Option<u64> {
+            self.0
+                .get(mint)?
+                .iter()
+                .find(|(t, _, _)| *t >= at_ms)
+                .map(|(t, _, _)| *t)
+        }
+    }
+    let pricer = TimelinePricer(timeline);
+    let config = FollowerConfig::default();
+    let runs = run_follower(&signals, &pricer, &config);
+
+    let comparisons: Vec<ComparisonRow> = runs
+        .iter()
+        .map(|run| ComparisonRow {
+            strategy: format!("FOLLOW_DELAY_{}MS", run.delay_ms),
+            net_pnl_lamports: run.net_pnl_lamports,
+            // Matched baseline S00 over the identical signal set is 0 by
+            // definition -> incremental edge equals the follower net.
+            incremental_net_edge_vs_no_trade: run.net_pnl_lamports,
+            max_drawdown_lamports: 0,
+            open_positions: run.open_positions,
+            status: if run.net_pnl_lamports > 0 {
+                "CANDIDATE_FOR_INDEPENDENT_REVIEW"
+            } else {
+                "LOSING"
+            }
+            .into(),
+        })
+        .chain(std::iter::once(ComparisonRow {
+            strategy: "S00".into(),
+            net_pnl_lamports: 0,
+            incremental_net_edge_vs_no_trade: 0,
+            max_drawdown_lamports: 0,
+            open_positions: 0,
+            status: "NO_TRADE_BASELINE".into(),
+        }))
+        .collect();
+    let oracle = sniper_strategy::oracle::AccountingOracle::new(0);
+    let marks = std::collections::HashMap::new();
+    let receipt = build_receipt(
+        "wallet_follower_v1",
+        "SYNTHETIC_OR_OBSERVED_QUOTES",
+        "QUOTES_AS_PROVIDED",
+        "signals+quotes",
+        0,
+        &oracle,
+        &marks,
+        0,
+        0,
+        runs.last().map(|r| r.open_positions).unwrap_or(0),
+        0,
+        comparisons,
+        vec![
+            "follower entries priced ONLY at/after observed+delay from the provided timeline; leader prices never used".into(),
+            "round-trip cost bps 125 = OBSERVED curve fee config (PF0: 95 protocol + 30 creator)".into(),
+            "unquotable exits stay open, marked at zero (conservative)".into(),
+        ],
+    );
+    let runs_json = serde_json::to_string_pretty(&runs).unwrap();
+    let run = write_bundle(&out_dir, &receipt, &runs_json, "", "{}").map_err(|e| e.to_string())?;
+    let summary = serde_json::json!({
+        "out": run.display().to_string(),
+        "signals": signals.len(),
+        "delays": runs.len(),
+        "receipt_sha256": receipt.receipt_sha256,
+        "net_by_delay": runs.iter().map(|r| serde_json::json!({
+            "delay_ms": r.delay_ms, "net": r.net_pnl_lamports,
+            "entries": r.followed_entries, "refused": r.refused_invalid + r.refused_no_quote,
+        })).collect::<Vec<_>>(),
+        "nonpromotable": true,
+    });
     Ok(serde_json::to_string_pretty(&summary).unwrap())
 }
 
