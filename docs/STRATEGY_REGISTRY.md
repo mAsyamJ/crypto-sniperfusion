@@ -39,8 +39,8 @@ Policy semantics live in code (`crates/sniper-strategy`) and the PF1 receipt —
 
 | ID | Family | Status | Blocked by |
 |---|---|---|---|
-| S11 | Filtered under-6h entry (selection) | FRONTIER — UNIMPLEMENTED | G0 real cohort at scale (calm window or long checkpointed sweep) |
-| S12 | Quality-filtered graduation entry (event) | FRONTIER — UNIMPLEMENTED | G0 cohort + post-graduation reserve snapshots for Engine B |
+| S11 | Filtered under-6h entry (selection) | FRONTIER — UNIMPLEMENTED | Market structure: capture machinery proven at scale (3,001-block COMPLETE window) but zero launch attempts observed — needs a launch-active window or M4 launchpad coverage |
+| S12 | Quality-filtered graduation entry (event) | FRONTIER — UNIMPLEMENTED | Same as S11 (zero launches in completed window) + post-graduation reserve snapshots for Engine B |
 | S13 | Mid-life slow mooner (survivor) | FRONTIER — UNIMPLEMENTED | G0 cohort + multi-day observation horizon |
 | S14 | Provenance-filtered leader follow (WA4 continuation) | FRONTIER — UNIMPLEMENTED | Calm-window leader re-observation — all leaders observed to date lost money or had unknown basis (congestion storm) |
 | EX | Exit engine (death-signal + staged exits) | COMPONENT — UNIMPLEMENTED | Attaches to any accepted entry family; evaluated A/B on identical fills |

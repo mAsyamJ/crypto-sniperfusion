@@ -25,7 +25,7 @@ The entire S11+ strategy frontier is gated on real `coverage_state=COMPLETE` lau
 
 ## What G0 still needs (open blockers)
 
-1. **Launch capture at scale** — the three COMPLETE windows landed in an 87% pump-tx failure storm (zero creates = market fact, not capture failure). Need a calm window or a minutes+ checkpointed sweep (`ckpt-*.json` resume mechanics exist).
+1. ~~Launch capture at scale~~ **DONE at the coverage level (2026-11-05)**: 3,001-block COMPLETE window, 0 gaps — containing zero launches (zero create *attempts* per the sampled diagnostic; see `docs/evidence/G0-WINDOW-COMPLETE-20261105.md`). The remaining gap is market structure, not capture: repeat at launch-active hours; consider M4 launchpad program coverage.
 2. **Reserve/fee snapshots as-of decision** — Engine B refuses to run without observed reserves; the next collector capability (Mission B in `docs/evidence/G0-H8-session.md`).
 3. **Multi-hour cohort** — prerequisite for the first real H8 tournament (W02) and any S11+ registration.
 
