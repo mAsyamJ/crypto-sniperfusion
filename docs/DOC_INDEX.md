@@ -66,6 +66,12 @@ Read order and precedence are defined in the `AGENTS.md` header. Summary:
 | `RPC_PROVIDERS.md` | Provider capability and data-availability matrix; G0 critical-path tracker | LIVING |
 | `DOC_INDEX.md` | This file | LIVING |
 
+## docs/dashboard/ — Control Tower dashboard workstream
+
+| File | Role | Status |
+|---|---|---|
+| `TOOLING_AUDIT.md` | DASH-00 tooling receipt: baseline tests, upstream license/security review, project-local skill pins (AntiSlop `during`, UI/UX Pro Max, Superpowers workflows), deferred runtime-dependency review | LIVING (extends per DASH milestone; evidence: `docs/evidence/DASH-00-20261105.md`) |
+
 ## docs/history/ — archived superseded documents
 
 Superseded root-level documents moved out of the tree top on 2026-11-05. Content unchanged; status marked in-file.
