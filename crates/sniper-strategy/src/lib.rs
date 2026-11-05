@@ -12,6 +12,7 @@
 //!   source-proven protocol fees; never compromises economic correctness for
 //!   surrogate parity.
 
+pub mod calendar;
 pub mod engine;
 pub mod eval;
 pub mod exit;
