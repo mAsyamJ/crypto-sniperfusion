@@ -32,11 +32,8 @@ class AdapterContractOffline(unittest.TestCase):
         source = (ROOT / "integrations" / "harness2" / "adapter.py").read_text()
         required = [
             "def tasks(self", "def domain_of(self", "def task_prompt(self",
-            "def task_files(
-        self", "def execute(
-        self", "def delivered(self",
-            "def trajectory(
-        self", "def deliverable_files(self",
+            "def task_files(", "def execute(", "def delivered(self",
+            "def trajectory(", "def deliverable_files(self",
             "def deliverable_text(self", "def base_harness(self",
             "def validate_tree(self", "def score(self",
             "self.spec = BenchSpec(", "self.substrate = OpencodeSubstrate()",
