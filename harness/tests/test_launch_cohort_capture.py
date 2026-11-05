@@ -77,7 +77,10 @@ def make_create_tx(signature, variant="create", failed=False, mint_bytes=None, t
         "meta": {
             "err": {"InstructionError": [0, "Custom(1)"]} if failed else None,
             "logMessages": logs,
-            "loadedAddresses": [],
+            # D0 (2026-11-05): real getBlock wire shape is a dict with
+            # writable/readonly arrays, not a list. The old `[]` fixture
+            # masked the ALT-flattening defect in the collector.
+            "loadedAddresses": {"writable": [], "readonly": []},
         },
     }
 
@@ -260,6 +263,109 @@ class InstructionVariant(unittest.TestCase):
         events = lcc.extract_creates_from_logs(logs, PUMP)
         self.assertEqual(len(events), 2)
         self.assertEqual([e["event_ordinal"] for e in events], [0, 1])
+
+
+class VersionedTxAltResolution(unittest.TestCase):
+    """D0 regression (2026-11-05): real getBlock wire shape is
+    `meta.loadedAddresses = {"writable": [...], "readonly": [...]}` — a dict.
+    The collector previously did `list(loadedAddresses)`, which yields the
+    literal key names ["writable", "readonly"] and silently skipped every
+    versioned transaction whose pump program id was ALT-resident, BEFORE
+    the log scan. These tests fail on that code."""
+
+    def _alt_tx(self, bucket, signature="SigAlt"):
+        tx = make_create_tx(signature)
+        # Pump program id ONLY in the ALT bucket; static keys without it.
+        static = [k for k in tx["transaction"]["message"]["accountKeys"] if k != PUMP]
+        tx["transaction"]["message"]["accountKeys"] = static
+        loaded = {"writable": [], "readonly": []}
+        loaded[bucket] = [PUMP]
+        tx["meta"]["loadedAddresses"] = loaded
+        return tx
+
+    def _capture_one_block(self, tx):
+        rpc = FakeRpc(blocks=[make_block(100, [tx])],
+                      sig_pages=[[{"signature": tx["transaction"]["signatures"][0],
+                                   "slot": 100, "err": None}]])
+        out = capture_tmp_dir()
+        return lcc.capture(rpc, 100, 100, out_dir=out, sleep=lambda s: None)
+
+    def test_pump_program_in_alt_writable_is_scanned(self):
+        report = self._capture_one_block(self._alt_tx("writable"))
+        self.assertEqual(report["coverage_state"], "COMPLETE")
+        self.assertEqual(len(report["creates"]), 1,
+                         "ALT-writable-resident pump program id must not skip the tx")
+
+    def test_pump_program_in_alt_readonly_is_scanned(self):
+        report = self._capture_one_block(self._alt_tx("readonly"))
+        self.assertEqual(len(report["creates"]), 1,
+                         "ALT-readonly-resident pump program id must not skip the tx")
+
+    def test_resolved_account_keys_canonical_order(self):
+        # Canonical versioned-tx index order: static, writable, readonly —
+        # the order RPC uses for programIdIndex/account resolution.
+        keys = lcc.resolved_account_keys(["A", "B"], {"writable": ["W1", "W2"], "readonly": ["R"]})
+        self.assertEqual(keys, ["A", "B", "W1", "W2", "R"])
+        # Legacy list shape tolerated defensively (older fixtures/transports).
+        self.assertEqual(lcc.resolved_account_keys(["A"], []), ["A"])
+        self.assertEqual(lcc.resolved_account_keys(["A"], None), ["A"])
+
+
+class LogAttributionParity(unittest.TestCase):
+    """D0 (2026-11-05): `Program log: Instruction: <Name>` lines are
+    program-agnostic — every Anchor program emits them. Attribution must
+    follow invoke frames exactly like the Rust LogAttribution
+    (crates/sniper-protocols/src/logs.rs): markers and `Program data:`
+    payloads only open/keep the create gate when emitted by the pump
+    program; other programs' markers neither open nor clear the gate."""
+
+    OTHER = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+
+    def test_foreign_program_create_marker_and_payload_are_rejected(self):
+        payload = base64.b64encode(build_create_payload()).decode()
+        logs = [
+            f"Program {self.OTHER} invoke [1]",
+            "Program log: Instruction: Create",
+            f"Program data: {payload}",
+            f"Program {self.OTHER} success",
+            f"Program {PUMP} invoke [1]",
+            "Program log: Instruction: Buy",
+            f"Program {PUMP} success",
+        ]
+        self.assertEqual(lcc.extract_creates_from_logs(logs, PUMP), [])
+
+    def test_foreign_marker_does_not_clear_pump_create_gate(self):
+        # Rust parity: a pump-attributed Create marker opens the gate; a
+        # FOREIGN program's intervening Instruction: Buy must not clear it,
+        # and the pump-attributed payload still decodes.
+        payload = base64.b64encode(build_create_payload()).decode()
+        logs = [
+            f"Program {PUMP} invoke [1]",
+            "Program log: Instruction: Create",
+            f"Program {self.OTHER} invoke [2]",
+            "Program log: Instruction: Buy",
+            f"Program {self.OTHER} success",
+            f"Program data: {payload}",
+            f"Program {PUMP} success",
+        ]
+        events = lcc.extract_creates_from_logs(logs, PUMP)
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["instruction_variant"], "create")
+
+    def test_foreign_createv2_payload_inside_own_frame_is_rejected(self):
+        payload = base64.b64encode(build_create_payload()).decode()
+        logs = [
+            f"Program {PUMP} invoke [1]",
+            "Program log: Instruction: Buy",
+            f"Program {self.OTHER} invoke [2]",
+            "Program log: Instruction: CreateV2",
+            f"Program data: {payload}",
+            f"Program {self.OTHER} success",
+            f"Program {PUMP} success",
+        ]
+        # The pump frame never emitted a create marker: no gate opens, and
+        # the foreign payload is not pump-attributed either way.
+        self.assertEqual(lcc.extract_creates_from_logs(logs, PUMP), [])
 
 
 class CaptureFlow(unittest.TestCase):

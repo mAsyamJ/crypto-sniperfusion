@@ -86,6 +86,56 @@ def sha256_hex(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def _looks_like_pubkey(s: str) -> bool:
+    return 32 <= len(s) <= 44 and all(c in _B58_ALPHABET for c in s)
+
+
+def resolved_account_keys(static_keys, loaded_addresses):
+    """Canonical versioned-transaction key resolution: static accountKeys,
+    then ALT-loaded writable, then readonly — the index order the runtime
+    and RPC use for programIdIndex/account resolution.
+
+    `loadedAddresses` on the real getBlock/getTransaction wire is a dict
+    `{"writable": [...], "readonly": [...]}`; a legacy list shape is
+    tolerated defensively. D0 (2026-11-05): the previous
+    `list(loadedAddresses)` flattening yielded the literal key names
+    ["writable", "readonly"] and silently skipped every tx whose pump
+    program id was only ALT-resident.
+    """
+    keys = list(static_keys or [])
+    if isinstance(loaded_addresses, dict):
+        keys += list(loaded_addresses.get("writable") or [])
+        keys += list(loaded_addresses.get("readonly") or [])
+    else:
+        keys += list(loaded_addresses or [])
+    return keys
+
+
+def build_log_attribution(logs):
+    """Attribute each log line to the program whose invocation emitted it
+    (mirrors crates/sniper-protocols/src/logs.rs LogAttribution): a stack
+    over `Program <id> invoke [depth]` frames; `Program <id> success` /
+    `Program <id> failed` pops; every other line is attributed to the
+    current stack top (None outside any frame). Frame lines themselves
+    carry None so they can never be mistaken for emissions."""
+    emitters = []
+    stack = []
+    for line in logs:
+        parts = line.split(" ")
+        is_frame = len(parts) >= 3 and parts[0] == "Program"
+        if is_frame and parts[2].startswith("invoke") and _looks_like_pubkey(parts[1]):
+            stack.append(parts[1])
+            emitters.append(None)
+            continue
+        if is_frame and parts[2] in ("success", "failed"):
+            emitters.append(None)
+            if stack:
+                stack.pop()
+            continue
+        emitters.append(stack[-1] if stack else None)
+    return emitters
+
+
 class _Cursor:
     """Borsh-style prefix-tolerant reader (mirrors the Rust decoder)."""
 
@@ -187,37 +237,46 @@ def decode_create_event(body: bytes):
 def extract_creates_from_logs(logs, program_id):
     """Extract decoded create events from one transaction's log messages.
 
-    The create gate matches whole `Instruction: Create` / `Instruction:
-    CreateV2` lines (other programs' create-named instructions cannot pass).
-    `Program data:` lines are attributed to the most recent instruction
-    marker; non-create instructions clear the attribution.
+    Attribution mirrors the Rust LogAttribution
+    (crates/sniper-protocols/src/logs.rs — oracle parity): `Program log:
+    Instruction: <Name>` lines are program-agnostic, so only whole-line
+    `Create`/`CreateV2` markers emitted by `program_id` (per the invoke
+    frame stack) open the create gate; only `Program data:` payloads
+    emitted by `program_id` are decoded; other programs' markers neither
+    open nor clear the gate. Non-create markers from `program_id` itself
+    clear the gate.
     """
     creates = []
     variant = None
     ordinal = 0
+    prefix_marker = "Program log: Instruction: "
     prefix_data = "Program data: "
-    for line in logs:
-        if line == "Program log: Instruction: Create":
-            variant = "create"
-        elif line == "Program log: Instruction: CreateV2":
-            variant = "create_v2"
-        elif line.startswith("Program log: Instruction: "):
-            variant = None
-        elif line.startswith(prefix_data) and variant is not None:
-            try:
-                payload = base64.b64decode(line[len(prefix_data):])
-            except Exception:
-                continue
-            if len(payload) < 8 or bytes(payload[:8]) != DISC_CREATE_EVENT:
-                continue
-            event = decode_create_event(payload[8:])
-            if event is None:
-                continue
-            event["instruction_variant"] = variant
-            event["event_ordinal"] = ordinal
-            event["payload_sha256"] = sha256_hex(payload)
-            ordinal += 1
-            creates.append(event)
+    variants = {"Create": "create", "CreateV2": "create_v2"}
+    emitters = build_log_attribution(logs)
+    for i, line in enumerate(logs):
+        if line.startswith(prefix_marker):
+            if emitters[i] != program_id:
+                continue  # another program's marker: no effect on the gate
+            variant = variants.get(line[len(prefix_marker):])
+            continue
+        if variant is None or emitters[i] != program_id:
+            continue
+        if not line.startswith(prefix_data):
+            continue
+        try:
+            payload = base64.b64decode(line[len(prefix_data):])
+        except Exception:
+            continue
+        if len(payload) < 8 or bytes(payload[:8]) != DISC_CREATE_EVENT:
+            continue
+        event = decode_create_event(payload[8:])
+        if event is None:
+            continue
+        event["instruction_variant"] = variant
+        event["event_ordinal"] = ordinal
+        event["payload_sha256"] = sha256_hex(payload)
+        ordinal += 1
+        creates.append(event)
     return creates
 
 
@@ -510,8 +569,9 @@ def _capture_window(rpc, genesis, from_slot, to_slot, out_dir, *, max_pages,
             if meta.get("err") is not None:
                 failed_transactions += 1
                 continue
-            keys = list((tx["transaction"]["message"].get("accountKeys") or []))
-            keys += list((meta.get("loadedAddresses") or []))
+            keys = resolved_account_keys(
+                tx["transaction"]["message"].get("accountKeys"),
+                meta.get("loadedAddresses"))
             if PUMP_PROGRAM_ID not in keys:
                 continue
             for event in extract_creates_from_logs(meta.get("logMessages") or [], PUMP_PROGRAM_ID):
