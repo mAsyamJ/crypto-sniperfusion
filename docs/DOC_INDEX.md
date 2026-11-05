@@ -55,6 +55,7 @@ Read order and precedence are defined in the `AGENTS.md` header. Summary:
 | `PF0_PNL_AUDIT.md` | PF0 P&L V2 gap audit findings | POINT-IN-TIME |
 | `DEVNET_EXECUTION_PILOT.md` | Devnet pilot runbook + hard safety rails | LIVING (while pilot active) |
 | `GLOSSARY.md` | ID system and shared vocabulary (M/H/PF/INFRA/WA/G, S/RX/W, evidence classes, gates, stats, market terms) | LIVING |
+| `GOALS.md` | The goal ladder: dependency-ordered living checklist (critical path, frontier, ladders, operator-pending) | LIVING |
 | `STRATEGY_REGISTRY.md` | Living status of every policy, challenger, and registered hypothesis | LIVING (state only; doctrine stays in `SOUL.md` §5) |
 | `RPC_PROVIDERS.md` | Provider capability and data-availability matrix; G0 critical-path tracker | LIVING |
 | `DOC_INDEX.md` | This file | LIVING |

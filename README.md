@@ -49,7 +49,7 @@ The demo is **synthetic only**, non-promotable and uses no remote RPC or key. `-
 
 ## Next objective
 
-**Unlock G0 data first:** provider capability probe → bounded, block-verified `COMPLETE` creation cohort → actual fee/reserve snapshots → Engine A/B comparison → bounded H8 research council → genuinely prospective read-only shadow. See [H8/G0 plan](docs/NEXT_GOAL_H8_G0.md) and [upstream integration map](docs/UPSTREAM_INTEGRATION_MATRIX.md).
+**Unlock G0 data first:** provider capability probe → bounded, block-verified `COMPLETE` creation cohort → actual fee/reserve snapshots → Engine A/B comparison → bounded H8 research council → genuinely prospective read-only shadow. See [H8/G0 plan](docs/NEXT_GOAL_H8_G0.md), [upstream integration map](docs/UPSTREAM_INTEGRATION_MATRIX.md), and the full [goal ladder](docs/GOALS.md).
 
 No successful synthetic experiment, testnet faucet trade, or Surfpool fork is evidence of mainnet profitability. Mainnet operations remain read-only; no automated funding or signing is authorized.
 
