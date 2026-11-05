@@ -1,0 +1,34 @@
+{
+  "adr": "docs/ADRS/0012-harness2-integration.md",
+  "cli_entrypoints": [
+    "harness2",
+    "harness2-demo",
+    "harness2-judge",
+    "harness2-report",
+    "harness2-setup",
+    "harness2-check",
+    "harness2-bridge"
+  ],
+  "commit": "6868817518876de8fd170c6a8354daca273b6191",
+  "install_date": "2026-11-05",
+  "install_mode": "editable checkout (.external/harness2) + extras [render]",
+  "license": "Apache-2.0 (Google LLC; not an officially supported Google product)",
+  "python": "3.12.3 (uv venv .venv-harness2)",
+  "repo": "https://github.com/google-research/harness2.git",
+  "resolved_dependencies": [
+    "-e file:///home/ubuntu/project/crypto-bot/.external/harness2",
+    "et-xmlfile==2.0.0",
+    "lxml==6.1.3",
+    "openpyxl==3.1.5",
+    "pillow==13.0.0",
+    "python-pptx==1.0.2",
+    "typing-extensions==4.16.0",
+    "xlsxwriter==3.3.1"
+  ],
+  "verification": {
+    "cli_entrypoints_exist": true,
+    "credential_free_demo_exit_0": true,
+    "demo_receipt": "harness/runs/harness2-install-smoke/demo.json (2 tasks ok, 0 failed)",
+    "import_resolves_to_checkout": true
+  }
+}
