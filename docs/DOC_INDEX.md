@@ -34,6 +34,10 @@ Read order and precedence are defined in the `AGENTS.md` header. Summary:
 | `CONTRIBUTING.md` | Human-facing mirror of the operating rules | LIVING |
 | `GOAL_PLAN_PROMPT.md` | Owner-authorized D→M→S→H session mission; one bounded package per invocation | LIVING OPERATOR WORKFLOW (baseline `adb5760`) |
 | `SESSION_LAUNCHER_PROMPT.md` | Root-level local agent entrypoint that loads the goal plan | LIVING OPERATOR WORKFLOW (baseline `adb5760`) |
+| `SNIPERFUSION_DASHBOARD_ARCHITECTURE_PLAN.md` | Local read-only dashboard architecture, canonical producer-only telemetry and financial correctness | POINT-IN-TIME DESIGN (baseline `fb1a762`) |
+| `SNIPERFUSION_DASHBOARD_GOAL_PLAN_PROMPT.md` | DASH-00…DASH-07 independent UI/full-stack implementation mission; not the trading goal plan | LIVING DASHBOARD WORKFLOW (baseline `fb1a762`) |
+| `SNIPERFUSION_DASHBOARD_SESSION_LAUNCHER.md` | One-session local dashboard agent entrypoint; bounded milestone and evidence handoff | LIVING DASHBOARD WORKFLOW (baseline `fb1a762`) |
+| `DASHBOARD_EXECUTE_PROMPT.md` | Copy-ready dashboard engineering agent start prompt; delegates to dashboard launcher/master plan | LIVING DASHBOARD WORKFLOW (baseline `fb1a762`) |
 
 ## docs/ — engineering and governance
 
