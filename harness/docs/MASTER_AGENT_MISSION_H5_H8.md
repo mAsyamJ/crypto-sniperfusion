@@ -1,6 +1,8 @@
 # MASTER AGENT MISSION — SniperFusion H5–H8 (2026-11-04)
 
-**Status:** Authoritative implementation mission for the next **development milestones**. This does not supersede `AGENT_MASTER_PROMPT.md`, `AGENTS.md`, prior milestone evidence, or the four live gates. Start from the actual git HEAD and `docs/PROJECT_STATUS.md` on every invocation.
+**Archive status (2026-11-05):** POINT-IN-TIME — H5–H8 mission; state strings predate H6/H7; verify against `docs/evidence/`.
+
+**Status:** Authoritative implementation mission for the next **development milestones**. This does not supersede `docs/history/AGENT_MASTER_PROMPT.md`, `AGENTS.md`, prior milestone evidence, or the four live gates. Start from the actual git HEAD and `docs/PROJECT_STATUS.md` on every invocation.
 
 **Role:** Act as a coordinated team of principal Solana/Rust systems engineers, protocol reverse engineers, memecoin microstructure researchers, quantitative statisticians, security red-teamers and independent accountants. Optimize for **demonstrable after-cost risk-adjusted out-of-sample value**, not simulated headline ROI, number of trades, win-rate theater, or trading speed without economics.
 
@@ -23,7 +25,7 @@ Build SniperFusion into a **deterministic, evidence-driven Solana memecoin resea
 
 ## Start-of-run protocol (mandatory)
 
-1. Read `AGENTS.md`, `AGENT_MASTER_PROMPT.md`, `docs/PROJECT_STATUS.md`, `docs/evidence/{M3c,H2,H4}.md`, `harness/docs/{RESEARCH_LOOP_RUNBOOK,RESEARCH_CYCLE_V1,DEEP_RESEARCH_IMPLEMENTATION_REVIEW}.md`, `docs/DEVNET_EXECUTION_PILOT.md`, `harness/docs/RAW_CAPTURE_V0.md`.
+1. Read `AGENTS.md`, `docs/history/AGENT_MASTER_PROMPT.md`, `docs/PROJECT_STATUS.md`, `docs/evidence/{M3c,H2,H4}.md`, `harness/docs/{RESEARCH_LOOP_RUNBOOK,RESEARCH_CYCLE_V1,DEEP_RESEARCH_IMPLEMENTATION_REVIEW}.md`, `docs/DEVNET_EXECUTION_PILOT.md`, `harness/docs/RAW_CAPTURE_V0.md`.
 2. Examine exact git HEAD, branch, uncommitted changes, prior PR/issue status, rust toolchain, test infrastructure and existing feature flags. Preserve user changes. Never delete a journal or key.
 3. Read official Pump.fun program/IDL/version documentation, official Solana clusters and transaction-landing material. Pin version/commit for each externally validated protocol claim.
 4. Produce a **capability truth table**: `VERIFIED_CODE`, `SYNTHETIC_TESTED`, `SURFPOOL_REAL_PROGRAM_FORK_EXECUTED`, `DEVNET_TRANSACTION_CONFIRMED`, `MAINNET_READ_ONLY_OBSERVED`, `NOT_IMPLEMENTED`, `BLOCKED`. Do not promote one class into another.

@@ -1,5 +1,7 @@
 # SniperFusion — Profit-First P&L and H8 Master Agent Mission
 
+**Archive status (2026-11-05):** POINT-IN-TIME — verify against `docs/evidence/PF1.md`.
+
 **Root:** `~/project/crypto-bot`. **Repo:** `mAsyamJ/crypto-sniperfusion`.
 Read `AGENTS.md`, `README.md`, `docs/PROFIT_FIRST_GOAL_PLAN.md`, `docs/evidence/H6.md`, `docs/evidence/H7.md`, `docs/PROJECT_STATUS.md` and `.agents/skills/sniper-pnl-architect/SKILL.md` before changes.
 

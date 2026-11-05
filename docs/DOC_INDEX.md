@@ -30,8 +30,8 @@ Read order and precedence are defined in the `AGENTS.md` header. Summary:
 | `README.md` | Public entry point; honest capability statement; agent quickstart; tool table | LIVING |
 | `AGENTS.md` | Operating rules for every agent session; router to all zones below | LIVING |
 | `SOUL.md` | Doctrine: winning definition, Ten Laws, strategy frontier, gates G-A…G-G | LIVING (deliberate amendment only; append-only anchors) |
-| `AGENT_MASTER_PROMPT.md` | Original master build prompt (2026-11-02) | HISTORICAL — superseded where conflicting |
-| `research.md` | Original 733-line engineering design review (2026-11-02) | HISTORICAL — point-in-time; candidate for relocation to `docs/research/` |
+| `SECURITY.md` | Security policy: key hygiene, reporting, CI enforcement, trading-safety invariants | LIVING |
+| `CONTRIBUTING.md` | Human-facing mirror of the operating rules | LIVING |
 
 ## docs/ — engineering and governance
 
@@ -58,6 +58,20 @@ Read order and precedence are defined in the `AGENTS.md` header. Summary:
 | `STRATEGY_REGISTRY.md` | Living status of every policy, challenger, and registered hypothesis | LIVING (state only; doctrine stays in `SOUL.md` §5) |
 | `RPC_PROVIDERS.md` | Provider capability and data-availability matrix; G0 critical-path tracker | LIVING |
 | `DOC_INDEX.md` | This file | LIVING |
+
+## docs/history/ — archived superseded documents
+
+Superseded root-level documents moved out of the tree top on 2026-11-05. Content unchanged; status marked in-file.
+
+| File | Role | Status |
+|---|---|---|
+| `AGENT_MASTER_PROMPT.md` | Original master build prompt (2026-11-02) | HISTORICAL — superseded where conflicting |
+
+## docs/research/ — dated research memos
+
+| File | Role | Status |
+|---|---|---|
+| `2026-11-02-initial-engineering-design-review.md` | Original 733-line engineering design review (moved from root `research.md`) | POINT-IN-TIME |
 
 ## docs/ADRS/ — architecture decision records
 
@@ -133,6 +147,7 @@ Routed per `AGENTS.md` §8; validated by `python3 harness/agentctl.py lint-skill
 | An architectural decision | `docs/ADRS/00NN-slug.md` | Process in `docs/ADRS/README.md`; next free number 0013 |
 | A new mission plan | `docs/NEXT_*.md` | Point-in-time; baseline SHA in header |
 | A research memo / literature review | `docs/research/YYYY-MM-DD-slug.md` | Dated; never edited after close |
+| A superseded/historical document | `docs/history/` | `git mv` + update every reference + index in the same PR |
 | A strategy status change | `docs/STRATEGY_REGISTRY.md` | Via H8 registry + gates only |
 | A specialist playbook | `.agents/skills/{name}/SKILL.md` | Must pass `lint-skills`; routed from `AGENTS.md` §8 |
 | A provider / data-availability fact | `docs/RPC_PROVIDERS.md` | With receipt or probe output reference |

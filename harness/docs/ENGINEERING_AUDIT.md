@@ -1,5 +1,7 @@
 # SniperFusion codebase audit — November 3, 2026
 
+**Archive status (2026-11-05):** POINT-IN-TIME — 2026-11-03 audit.
+
 ## Scope and evidence
 
 Observed repository mAsyamJ/crypto-sniperfusion at main SHA 2d51a32b4a480618483e2018d9f234d0906594e0. Six commits and four Rust crates. GitHub Actions run 41483671606 passed CI steps for formatting, Clippy, workspace tests, simple regex secret and license scans. docs/evidence/M3.md states 89 Rust tests; they were not independently rerun in this audit. M3c real-program execution remains open. This document does not certify security or profitability.

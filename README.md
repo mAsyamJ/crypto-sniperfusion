@@ -6,7 +6,7 @@
 
 ## Start here — coding agents
 
-1. Read [AGENTS.md](AGENTS.md), [Agent Operating System](docs/AGENT_OPERATIONS.md) and [next engineering goals](docs/NEXT_GOAL_H8_G0.md).
+1. Read [AGENTS.md](AGENTS.md), [Agent Operating System](docs/AGENT_OPERATIONS.md), [next engineering goals](docs/NEXT_GOAL_H8_G0.md), then the [documentation map](docs/DOC_INDEX.md) and [glossary](docs/GLOSSARY.md).
 2. Inspect specialist skills under [.agents/skills](.agents/skills); these are task-specific markdown playbooks, not installed external powers.
 3. Run non-mutating self-inspection and optional synthetic demonstration:
 
@@ -45,7 +45,7 @@ The demo is **synthetic only**, non-promotable and uses no remote RPC or key. `-
 - `crates/sniper-strategy`: S00–S10 policies, Engine A/B, independent accounting and evaluator.
 - `crates/sniper-app`: Rust CLI, Devnet pilot isolated from funded mainnet.
 - `harness/`: research tools, collection, run manifests, synthetic fixtures, tests.
-- `.agents/skills/`: expert playbooks; `docs/`: architecture, integration and evidence.
+- `.agents/skills/`: expert playbooks; `docs/`: indexed in [DOC_INDEX](docs/DOC_INDEX.md) — architecture, evidence, [glossary](docs/GLOSSARY.md), [strategy registry](docs/STRATEGY_REGISTRY.md), [provider matrix](docs/RPC_PROVIDERS.md).
 
 ## Next objective
 

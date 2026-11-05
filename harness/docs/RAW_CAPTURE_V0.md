@@ -1,5 +1,7 @@
 # Raw Pump.fun program-touch capture V0
 
+**Archive status (2026-11-05):** POINT-IN-TIME — V0 raw-capture spec.
+
 Scope: `harness/observation_capture.py` makes **read-only** JSON-RPC calls against Mainnet or Devnet after matching the exact cluster genesis hash. It samples up to 100 recent program-touch signatures, requests their raw transaction objects, records receive wall/monotonic clocks, unavailable-transaction flags and an integrity digest, then writes a new immutable JSON report under the ignored `harness/runs/` directory.
 
 It cannot sign, fund, simulate, select mints, broadcast, submit orders, infer profitable trades, reconstruct canonical transaction indices, or claim full cohort coverage. **Recent program touches are not the same thing as all token creation events.** Commitment can change, RPC methods are paginated and public history may be incomplete. Its schema explicitly marks `all_launches_captured=false` and `coverage=UNKNOWN_INCOMPLETE_PROGRAM_TOUCH_ONLY`.

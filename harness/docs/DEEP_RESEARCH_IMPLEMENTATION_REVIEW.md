@@ -1,5 +1,7 @@
 # Deep Research Review → Engineering Decisions (2026-11-03)
 
+**Archive status (2026-11-05):** POINT-IN-TIME — 2026-11-03 review; its two P0s were remediated at `204d853`/`b5e266c`.
+
 Input: user-provided `deep-research-report (3).md`, `harness/docs/AI_STRATEGY_HARNESS_V1.md` and `harness/docs/NEXT_AGENT_RESEARCH_PROMPT.md`. This document is a derivative engineering decision record, not a claim of having replicated the report's third-party observational data.
 
 ## Verified code problems (P0)

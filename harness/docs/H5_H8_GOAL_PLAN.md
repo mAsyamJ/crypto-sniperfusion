@@ -1,5 +1,7 @@
 # SniperFusion H5–H8 Goal Plan and Acceptance Matrix
 
+**Archive status (2026-11-05):** POINT-IN-TIME — H5–H8 acceptance matrix; state strings predate H6/H7.
+
 **Date:** 2026-11-04. **Owner:** SniperFusion engineering. **Authoritative coding mission:** [MASTER_AGENT_MISSION_H5_H8.md](MASTER_AGENT_MISSION_H5_H8.md). **Implementation branch:** `codex/devnet-pilot-research-loop-20261104` / draft PR #6, based on merged PR #2. Verify current HEAD/PR before working.
 
 ## North-star: what counts as success?

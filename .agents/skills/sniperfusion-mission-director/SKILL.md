@@ -5,7 +5,7 @@ description: Execute the SniperFusion H5-H8 gated development/research mission, 
 # SniperFusion Mission Director
 
 Always read:
-1. `AGENTS.md` and `AGENT_MASTER_PROMPT.md`.
+1. `AGENTS.md` and `docs/history/AGENT_MASTER_PROMPT.md`.
 2. `harness/docs/MASTER_AGENT_MISSION_H5_H8.md` and `harness/docs/H5_H8_GOAL_PLAN.md`.
 3. `docs/PROJECT_STATUS.md`, `docs/DEVNET_EXECUTION_PILOT.md`, `harness/docs/RESEARCH_CYCLE_V1.md`.
 4. Relevant exact Rust implementation and tests, official Pump.fun docs and confirmed deployment information.

@@ -1,4 +1,6 @@
 # Surfpool pin record — reviewed, pinned install (H1 / M3c)
+
+**Archive status (2026-11-05):** REFERENCE — Surfpool v1.7.0 pin + sha256.
 # The binary itself lives in harness/bin/ (gitignored). Reproduce with the
 # commands below and verify the digest before use.
 #

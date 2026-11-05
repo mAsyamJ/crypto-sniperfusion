@@ -51,9 +51,12 @@ flowchart LR
 | `sniper-core` | Dual event identity (`ChainEventId` = chain-truth signature/outer/inner/event-ordinal; `ProviderObservationId` = provider+stream+receipt), commitment levels, wall-clock + monotonic timestamps, schema versions, integer newtypes (Lamports/Microlamports/TokenAmount/Bps, checked math), error taxonomy, typed config, `RiskAuthorization` | No I/O, no async runtime dep, no network. Everything else depends on core; core depends on nothing internal |
 | `sniper-protocols` | Venue + program-ID registry, instruction decoders/builders per protocol version, account-layout tables, quote math (i128 signed reserves) | Pure functions over bytes/accounts; validated against official IDL tables (`docs/PROTOCOL_COMPATIBILITY.md`) + fixtures |
 | `sniper-runtime` | observe/replay/paper runtimes, priority bus, dedup/gap/reorder handling, blockhash cache, provider capability detection, ingestion adapters (RPC/WSS/gRPC), journal persistence interface, kill switch | Observer+replay hold **no broadcaster/signer capability** (type-enforced). Overload sheds SPECULATIVE only |
+| `sniper-strategy` | S00–S10 policies; Engine A (LegacySurrogateV1 surrogate) + Engine B (protocol quote on observed reserves/fees, abstains when unobserved); on-chain-observed fee schedules (curve, PumpSwap tiered); independent double-entry P&L oracle; full-portfolio evaluator + 12 negative controls (H7/PF1) | No synthetic fallback presented as real; unobserved reserves/fee tiers ⇒ abstain; receipts deterministic and permanently non-promotable |
 | `sniper-app` | CLI, mode composition, tracing+redaction, metrics endpoints | `live` subcommand requires: `live` cargo feature (non-default) ∧ operator authorization token ∧ validated budget config ∧ kill-switch check |
 
-Later decomposition (M5+): `sniper-intelligence`, `sniper-strategy`, `sniper-positions`, `sniper-storage` extracted from runtime/core when their interfaces freeze — driven by compile-time coupling evidence, not the target diagram.
+`sniper-strategy` was extracted ahead of plan at H7 (2026-11-04). Remaining later decomposition (M5+): `sniper-intelligence`, `sniper-positions`, `sniper-storage` — extracted when their interfaces freeze, driven by compile-time coupling evidence, not the target diagram.
+
+Adjacent planes (never linked into `crates/`): `harness/` — Python research tooling (G0 collector, H8 registry, evaluator CLI, labs, tests); `integrations/harness2` — the Google Harness² integration (ADR-0012, deterministic channel only, model-backed BLOCKED).
 
 ## Event architecture
 

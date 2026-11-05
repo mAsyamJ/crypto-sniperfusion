@@ -1,6 +1,6 @@
 # AGENTS.md — operating rules for this repository
 
-**Read order for every session:** `SOUL.md` (doctrine — why we exist and what winning is) → this file (operations — how we work) → `docs/PROJECT_STATUS.md` (state — what exists today) → `AGENT_MASTER_PROMPT.md` (original build spec, historical where superseded).
+**Read order for every session:** `SOUL.md` (doctrine — why we exist and what winning is) → this file (operations — how we work) → `docs/PROJECT_STATUS.md` (state — what exists today) → `docs/DOC_INDEX.md` (map — where everything lives). The original build spec survives at `docs/history/AGENT_MASTER_PROMPT.md` (HISTORICAL — superseded where conflicting).
 
 **Precedence:** direct operator instructions > §2 safety restrictions in this file > `SOUL.md` doctrine > remaining sections of this file > `docs/AGENT_OPERATIONS.md` > specialist skill playbooks (`.agents/skills/`) > archived milestone prompts.
 
@@ -46,7 +46,7 @@ Failure discipline: a failing gate blocks the milestone; root-cause, fix, re-run
 ## 6. Where things are
 
 - `SOUL.md` — doctrine: winning, Ten Laws, evidence anchors, strategy frontier, gates.
-- `docs/` — engineering docs + `evidence/` receipts + `ADRS/`; status of everything: `docs/PROJECT_STATUS.md`.
+- `docs/` — engineering docs + `evidence/` receipts + `ADRS/`; status of everything: `docs/PROJECT_STATUS.md`; vocabulary: `docs/GLOSSARY.md`; strategy states: `docs/STRATEGY_REGISTRY.md`; providers/G0: `docs/RPC_PROVIDERS.md`; full map: `docs/DOC_INDEX.md`. Superseded documents live in `docs/history/`; dated research memos in `docs/research/`.
 - `crates/` — `sniper-core`, `sniper-protocols`, `sniper-runtime`, `sniper-strategy` (engines, oracle, evaluator), `sniper-app` (CLI).
 - `harness/` — `agentctl.py` (dispatch), `snf-harness` (doctor/verify/replay/fork/shadow/evaluate/compare/promote), `launch_cohort_capture.py` (read-only G0 collector), `research_cycle.py` / `research_batch.py` (synthetic-only), `research_registry.py` (H8 preregistration), `wallet_alpha_lab.py`, `wallet_watch.py`, `rpc_capability_probe.py`, `cluster_probe.py`.
 - `.agents/skills/` — 19 specialist playbooks (documentation, not live capabilities).

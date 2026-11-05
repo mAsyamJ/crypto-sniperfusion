@@ -1,4 +1,6 @@
 # SniperFusion AI Strategy Research Harness — Architecture V1
+
+**Archive status (2026-11-05):** POINT-IN-TIME — harness architecture V1.
 Date: 2026-11-03 | Status: DESIGN/RESEARCH ONLY | Baseline main: bf694d6fbf1d9b9834c8f0bded192649994ebf8a
 
 ## 0. Goal and strict separation

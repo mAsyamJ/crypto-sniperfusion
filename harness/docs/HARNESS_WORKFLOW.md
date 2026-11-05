@@ -1,5 +1,7 @@
 # SniperFusion — Continuous Engineering and Quantitative Research Harness
 
+**Archive status (2026-11-05):** POINT-IN-TIME — V0-era workflow; superseded by `AGENTS.md` §7.
+
 **Objective:** Maximize measured, risk-adjusted after-cost expected return subject to strict correctness, security and reliability gates. Sniping is speculative and a fast implementation does not guarantee profits.
 
 ## Proposed command interface (NOT yet implemented)

@@ -1,4 +1,6 @@
 # SniperFusion — Advanced Memecoin Lifecycle & Sniping Research Questions
+
+**Archive status (2026-11-05):** REFERENCE — living question bank; answer with current evidence only.
 Date: 2026-11-03 | Research brief | All empirical findings require reproducible citations, cohort definitions, dates and code-level evidence.
 
 ## Instructions for answering

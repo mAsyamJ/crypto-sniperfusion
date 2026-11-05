@@ -1,5 +1,7 @@
 # SniperFusion Continuous Research Loop — executable V0 + target integration
 
+**Archive status (2026-11-05):** LIVING — command reference; on conflict `AGENTS.md` §7 wins.
+
 Date: 2026-11-03. Branch `codex/research-harness-agent-skills-20261103`.
 
 **Status:** V0 synthetic surrogate + P0 correctness fixes + eight agent skills + CI. **NOT** production alpha, unbiased historical backtest, validated mainnet prices, read-only seven-day shadow, or live execution. No strategy has a demonstrated 100% win rate or verified positive live expected value. The attached deep-research report is the analysis basis; its code assertions were independently checked against this repository before patching.

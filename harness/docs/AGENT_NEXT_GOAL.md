@@ -1,12 +1,14 @@
 # NEXT ENGINEERING MISSION — SniperFusion H0–H4
 
+**Archive status (2026-11-05):** HISTORICAL — superseded by `docs/NEXT_GOAL_H8_G0.md`.
+
 Role: Principal Solana/Rust trading-systems engineer, quantitative researcher, CI and security lead.
 Project root: ~/project/crypto-bot
 Canonical repository: mAsyamJ/crypto-sniperfusion
 
 ## First inspect, never assume
 
-Read AGENTS.md, AGENT_MASTER_PROMPT.md, docs/PROJECT_STATUS.md, docs/evidence/M3.md and the entire harness/ directory. Inspect actual HEAD and worktree. External audit baseline at 2d51a32b4a480618483e2018d9f234d0906594e0 found four Rust crates, offline M3 maths/builders and mock Geyser tests, with M3c real-program local execution not completed. Existing CLI paper mode uses CountingHook with Lamports::ZERO, not a true portfolio simulator. RiskAuthorization is publicly constructible/serializable with unchecked slot addition. The JSONL journal flush does not guarantee fsync. Gap recovery auto-resumes on later contiguous observations without proving backfill. GitHub reported PUBLIC visibility while docs claimed private.
+Read AGENTS.md, docs/history/AGENT_MASTER_PROMPT.md, docs/PROJECT_STATUS.md, docs/evidence/M3.md and the entire harness/ directory. Inspect actual HEAD and worktree. External audit baseline at 2d51a32b4a480618483e2018d9f234d0906594e0 found four Rust crates, offline M3 maths/builders and mock Geyser tests, with M3c real-program local execution not completed. Existing CLI paper mode uses CountingHook with Lamports::ZERO, not a true portfolio simulator. RiskAuthorization is publicly constructible/serializable with unchecked slot addition. The JSONL journal flush does not guarantee fsync. Gap recovery auto-resumes on later contiguous observations without proving backfill. GitHub reported PUBLIC visibility while docs claimed private.
 
 Verify each fact again against the current working tree before changing it. Preserve the four crates, milestones, commits and existing tests.
 

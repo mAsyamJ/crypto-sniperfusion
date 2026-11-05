@@ -1,5 +1,7 @@
 # MASTER BUILD PROMPT — Solana Sniper Fusion (Rust Native)
 
+**Status:** HISTORICAL (2026-11-02) — original build spec, superseded where conflicting by `SOUL.md` + `AGENTS.md`; moved from root on 2026-11-05 (see `docs/DOC_INDEX.md`).
+
 **Project root:** `~/project/crypto-bot` (resolve `$HOME/project/crypto-bot`; do NOT assume `/project` is the same location)  
 **Working mode:** Autonomous, milestone-gated engineering, with explicit safety controls  
 **Target:** A self-hosted, Rust-native Solana token-launch sniper, combining verified Chainstack baseline behavior with independently implemented token intelligence, multi-DEX adapters, copy trading, robust execution, and deterministic risk management.  

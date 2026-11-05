@@ -1,5 +1,7 @@
 # SniperFusion research cycles v1 — bounded, repeatable, critical evidence separation
 
+**Archive status (2026-11-05):** POINT-IN-TIME — V1 cycle contract; V2 planned (`docs/NEXT_GOAL_H8_G0.md` PR-3).
+
 ## Scope
 
 \`harness/research_cycle.py\` implements an **actual finite automated research experiment controller** on top of the V0 synthetic-only surrogate \`harness/research_batch.py\`.

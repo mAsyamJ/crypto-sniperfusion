@@ -1,5 +1,7 @@
 # SniperFusion — Wallet Alpha Integration Mission (WA0→WA3)
 
+**Archive status (2026-11-05):** POINT-IN-TIME — verify against `docs/evidence/WA1-WA3.md`.
+
 Role: Senior Rust/Solana engineer, quantitative memecoin trader, wallet intelligence researcher, deterministic execution architect and security reviewer.
 
 Project root: `~/project/crypto-bot`. Repository: `mAsyamJ/crypto-sniperfusion`.
