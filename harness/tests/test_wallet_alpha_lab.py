@@ -219,3 +219,90 @@ class WalletWatchTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OwnerGraphTests(unittest.TestCase):
+    """million's owner-graph + consensus factories, reimplemented."""
+
+    def _owners(self):
+        import wallet_signals as ws
+        # A funds B and C (same actor); D/E/F co-enter 3 shared mints but
+        # with NO funding bridge (copytraders: co-entry must NOT merge
+        # them); G is a hub paying fees for 7 wallets (exchange) and must
+        # be excluded from clustering.
+        funding = {
+            "A": {"B": 5 * 1_000_000_000, "C": 2 * 1_000_000_000},
+            "B": {"A": 1.2 * 1_000_000_000},
+            "D": {}, "E": {}, "F": {}, "G": {},
+            "w1": {"G": 5 * 1_000_000_000}, "w2": {"G": 5 * 1_000_000_000},
+            "w3": {"G": 5 * 1_000_000_000}, "w4": {"G": 5 * 1_000_000_000},
+            "w5": {"G": 5 * 1_000_000_000}, "w6": {"G": 5 * 1_000_000_000},
+            "w7": {"G": 5 * 1_000_000_000},
+        }
+        top_fee = {}  # fee-payer path exercised by hub exclusion above
+        entered = {
+            "A": {"m1"}, "B": {"m2"}, "C": set(),
+            "D": {"x", "y", "z"}, "E": {"x", "y", "z"}, "F": {"x", "y", "z"},
+        }
+        edges = ws.build_edges(funding, top_fee, entered)
+        owners, hubs = ws.cluster_owners(edges)
+        return edges, owners, hubs
+
+    def test_funding_bridges_same_actor_into_one_owner(self):
+        edges, owners, hubs = self._owners()
+        self.assertEqual(owners.get("A"), owners.get("B"))
+        self.assertEqual(owners.get("A"), owners.get("C"))
+
+    def test_coentry_alone_never_bridges(self):
+        edges, owners, hubs = self._owners()
+        # D/E/F shared 3 mints with Jaccard 1.0 — but ONLY co-entry edges:
+        self.assertNotIn("D", owners)
+        self.assertNotIn("E", owners)
+        self.assertNotIn("F", owners)
+
+    def test_high_degree_hub_excluded(self):
+        edges, owners, hubs = self._owners()
+        self.assertIn("G", hubs, "the 7-edge fee hub is a disperser/exchange")
+        self.assertNotIn("G", owners)
+        # wallets paid THROUGH G are not merged with each other
+        ids = {owners.get(w) for w in ("w1", "w2", "w3")}
+        self.assertEqual(ids, {None})
+
+
+class ConsensusTests(unittest.TestCase):
+    def test_owner_dedup_and_net_flow_gate(self):
+        import wallet_signals as ws
+        owners = {
+            "A1": "owner:x", "A2": "owner:x",  # one actor, two wallets
+            "B": "owner:y",
+        }
+        entries = [
+            {"wallet": "A1", "mint": "m", "quote_delta_lamports": -2_000_000_000},
+            {"wallet": "A2", "mint": "m", "quote_delta_lamports": -1_500_000_000},
+            {"wallet": "B", "mint": "m", "quote_delta_lamports": -1_200_000_000},
+        ]
+        # Without net-flow check: 2 distinct owners -> consensus fires.
+        result = ws.consensus(entries, owners, min_owners=2, net_flow=False)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["distinct_owner_buyers"], 2)
+        # A2 ALSO sells big: buyers 4.7 SOL vs sellers 6 SOL -> net-flow
+        # gate kills the signal (breadth is not agreement).
+        entries.append({"wallet": "A2", "mint": "m", "quote_delta_lamports": +6_000_000_000})
+        self.assertEqual(ws.consensus(entries, owners, min_owners=2, net_flow=True), [])
+
+    def test_ladder_judged_on_cumulative_sol(self):
+        import wallet_signals as ws
+        base = 1_700_000_000_000
+        clips = [
+            {"wallet": "W", "mint": "m", "at_ms": base + i * 60_000,
+             "quote_delta_lamports": -1_400_000_000}
+            for i in range(3)
+        ]
+        # 3 x 1.4 SOL clips = 4.2 SOL cumulative: per-clip floors at 2 SOL
+        # would hide it; the ladder detector catches it.
+        self.assertEqual(len(ws.ladder(clips)), 1)
+        self.assertEqual(ws.ladder(clips)[0]["clips"], 3)
+        # A sell in-window disqualifies.
+        with_sell = clips + [{"wallet": "W", "mint": "m", "at_ms": base + 200_000,
+                              "quote_delta_lamports": +1_000_000_000}]
+        self.assertEqual(ws.ladder(with_sell), [])
