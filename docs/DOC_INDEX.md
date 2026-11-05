@@ -89,7 +89,7 @@ Numbers 0004–0011 are unused (reserved by an interim plan, never written). Do 
 
 ## docs/evidence/ — write-once execution receipts
 
-18 immutable receipts (M0…M3c, H0, H2, H4, H6, H7, PF0, PF1, INFRA ×3, G0-H8-session, WA1-WA3, HARNESS2-INTEGRATION). Format contract and index: `docs/evidence/README.md`. Corrections land in new files, never edits.
+19 immutable receipts (M0…M3c, H0, H2, H4, H6, H7, PF0, PF1, INFRA ×3, G0-H8-session, WA1-WA3, HARNESS2-INTEGRATION, G0-SWEEP-20261105). Format contract and index: `docs/evidence/README.md`. Corrections land in new files, never edits.
 
 ## harness/docs/ — research-harness working documents
 

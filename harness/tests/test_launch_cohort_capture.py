@@ -463,6 +463,34 @@ class CheckpointResumeBudget(unittest.TestCase):
         self.assertEqual(len(report["creates"]), 2)
         self.assertTrue(Path(ckpt).exists())
 
+    def test_budget_stop_report_carries_summary_keys_regression(self):
+        """Regression (2026-11-05): budget-stop reports must satisfy the same
+        summary extraction main() applies to completed runs — previously a
+        budget stop crashed main() with KeyError 'blocks_fetched'."""
+        out = tempfile.mkdtemp(prefix="lcc-budgetreg-")
+        ckpt = str(Path(out) / "ckpt.json")
+        blocks = [make_block(100, [make_create_tx("SigA")]),
+                  make_block(101, [make_create_tx("SigB")])]
+        rpc = FakeRpc(blocks=blocks,
+                      sig_pages=[[{"signature": "SigA", "slot": 100, "err": None},
+                                  {"signature": "SigB", "slot": 101, "err": None}]],
+                      tip=101)
+        # genesis, slot, sigs(page), block(100) = 4 -> stop before block 101
+        report = lcc.capture(rpc, 100, 101, out_dir=out, sleep=lambda s: None,
+                             checkpoint=ckpt, max_requests=4)
+        self.assertEqual(report["status"], "BUDGET_EXHAUSTED_RESUMABLE")
+        # exact main() extraction contract — must not raise
+        summary = {k: report[k] for k in ("coverage_state", "blocks_fetched",
+                                          "pages_fetched", "raw_path",
+                                          "manifest_path", "nonpromotable")}
+        summary["creates"] = len(report["creates"])
+        summary["gaps"] = len(report["gaps"])
+        self.assertEqual(summary["coverage_state"], "INCOMPLETE")
+        self.assertGreaterEqual(summary["blocks_fetched"], 1,
+                                "progress-so-far from the checkpoint")
+        self.assertEqual(report["checkpoint"], ckpt)
+        self.assertIn("collected_to_slot", report)
+
     def test_budget_stop_report_is_blocked_and_resumable(self):
         out = tempfile.mkdtemp(prefix="lcc-budget-")
         rpc = FakeRpc(blocks=[make_block(100, [])], tip=100)

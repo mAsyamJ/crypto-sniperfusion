@@ -44,5 +44,6 @@ Rules:
 | `G0-H8-session.md` | G0 + H8 | Provider unblocked (wire-param fix), three COMPLETE windows, zero creates = failure storm, registry machinery |
 | `WA1-WA3.md` | WA1–WA3 | Normalizer, `sniper wallet-pnl`, delayed follower; all delays lose vs S00 on real smoke |
 | `HARNESS2-INTEGRATION.md` | Harness² + WA-full + W01 | Deterministic harness² channel, million owner-graph/consensus/ladder, Dorado differentials, W01 rejected (§E) |
+| `G0-SWEEP-20261105.md` | G0 session 2 | Probe green; 4-slot COMPLETE window; 3,000-slot sweep resumable at 1,488/3,000 blocks, 0 gaps, 0 creates (partial); budget-stop KeyError regression found+fixed+tested (117/117) |
 
 Adding a receipt: new file `{ID}.md` in this directory, indexed here and in `docs/PROJECT_STATUS.md`, following the contract above.

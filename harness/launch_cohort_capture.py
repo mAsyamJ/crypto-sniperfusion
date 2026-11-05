@@ -616,18 +616,37 @@ def capture(rpc, from_slot, to_slot, out_dir, *, max_pages=20, retries=3,
                                checkpoint=checkpoint, max_requests=max_requests,
                                time_budget_s=time_budget_s)
     except BudgetExceeded as exc:
-        return _budget_stop_report(from_slot, to_slot, out_dir, str(exc))
+        return _budget_stop_report(from_slot, to_slot, out_dir, str(exc), checkpoint=checkpoint)
 
 
-def _budget_stop_report(from_slot, to_slot, out_dir, reason):
-    """Honest partial report on a budget stop: BLOCKED, resumable."""
+def _budget_stop_report(from_slot, to_slot, out_dir, reason, checkpoint=None):
+    """Honest partial report on a budget stop: BLOCKED, resumable.
+
+    Carries the same summary keys as a completed run (progress-so-far
+    from the checkpoint; zero/empty when no checkpoint was supplied);
+    coverage_state stays INCOMPLETE — this is never a completeness claim.
+    """
     path = Path(out_dir) / f"budget-stop-{time.strftime('%Y%m%dT%H%M%S', time.gmtime())}-{os.getpid()}.json"
+    state = _load_checkpoint(checkpoint) or {}
     report = {
         "status": "BUDGET_EXHAUSTED_RESUMABLE",
         "coverage_state": "INCOMPLETE",
         "reason": reason,
         "window": [from_slot, to_slot],
         "nonpromotable": True,
+        # Regression (2026-11-05): same summary keys as a completed run,
+        # populated from the resumable checkpoint (saved after the last
+        # completed unit of work) so main()'s extraction cannot KeyError.
+        # Numbers are "so far", never a completeness claim.
+        "blocks_fetched": len(state.get("verified_blocks", [])),
+        "pages_fetched": state.get("pages_fetched", 0),
+        "creates": state.get("creates", []),
+        "gaps": state.get("gaps", []),
+        "raw_path": None,
+        "manifest_path": None,
+        "requests_used": state.get("requests_used"),
+        "collected_to_slot": state.get("collected_to_slot"),
+        "checkpoint": checkpoint,
     }
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
@@ -654,7 +673,7 @@ def capture_recent_slots(rpc, lookback_slots, out_dir, *, max_pages=20, retries=
                                checkpoint=checkpoint, max_requests=max_requests,
                                time_budget_s=time_budget_s)
     except BudgetExceeded as exc:
-        return _budget_stop_report(from_slot, tip, out_dir, str(exc))
+        return _budget_stop_report(from_slot, tip, out_dir, str(exc), checkpoint=checkpoint)
 
 
 def main(argv=None):
