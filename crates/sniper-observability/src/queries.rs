@@ -138,8 +138,8 @@ pub fn run_detail(conn: &Connection, as_of: &str, run_id: &str) -> Stamped<RunDe
         }
     };
     let limitations: Vec<String> = serde_json::from_str(&limitations_json).unwrap_or_default();
-    let audit_ok = if audit_json.is_empty() {
-        None
+    let audit_ok = if audit_json.is_empty() || audit_json.trim() == "{}" {
+        None // wallet-* bundles emit {} (D-4): audit verdict UNAVAILABLE
     } else {
         // Research bundles: map of strategy -> {conservation_ok, cash_matches_engine}.
         serde_json::from_str::<serde_json::Value>(&audit_json)

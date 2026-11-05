@@ -79,8 +79,10 @@ run_comparisons(run_id TEXT, strategy TEXT, net_pnl_lamports INTEGER, incrementa
 run_fees(run_id TEXT, kind TEXT, lamports INTEGER, PRIMARY KEY(run_id, kind))
 run_trades(run_id TEXT, ord INTEGER, strategy TEXT, record_kind TEXT, mint TEXT, slot INTEGER NULL,
      at_ms INTEGER NULL, net_pnl_lamports INTEGER NULL, raw_json TEXT, PRIMARY KEY(run_id, ord))
-calendar_days(run_id TEXT, strategy TEXT, day_utc TEXT, realized_net_pnl_lamports INTEGER,
-     closed_count INTEGER, partial INTEGER, PRIMARY KEY(run_id, strategy, day_utc))
+-- calendar_days: NOT materialized (DASH-02 amendment) — daily buckets are a
+-- pure function of run_trades via sniper-strategy::calendar (producer-side
+-- Rust), computed at query time; caching a pure deterministic function in
+-- SQL would add schema without adding truth.
 coverage_windows(id TEXT PK, from_slot INTEGER, to_slot INTEGER, coverage_state TEXT, gaps INTEGER,
      raw_creates_count INTEGER, unique_mints INTEGER, dataset_sha256 TEXT, evidence_class TEXT)
 registry_records(seq INTEGER, registry_id TEXT, kind TEXT, payload_json TEXT, record_sha256 TEXT,
