@@ -19,6 +19,7 @@ verification succeeds.
 
 import argparse
 import base64
+import fcntl
 import hashlib
 import json
 import os
@@ -26,6 +27,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from contextlib import contextmanager
 from pathlib import Path
 
 PUMP_PROGRAM_ID = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
@@ -348,6 +350,41 @@ class _BudgetedRpc:
         return wrapped
 
 
+class CheckpointLocked(RuntimeError):
+    """Another capture process holds the checkpoint lock (incident
+    2026-11-05: concurrent writers raced the tmp->replace save and
+    corrupted a 47MB checkpoint). Fail fast; never share a checkpoint."""
+
+
+@contextmanager
+def _checkpoint_lock(path):
+    """Advisory exclusive lock guarding a checkpointed capture.
+
+    The lock is held on an open fd for the whole window sweep: a second
+    capture on the same checkpoint fails fast with CheckpointLocked
+    instead of interleaving writes. The kernel releases the lock when the
+    process dies (even SIGKILL), so a crashed or killed sweep never
+    deadlocks the next one. checkpoint=None (unchecked single runs) is
+    unchanged: no shared state to guard."""
+    if path is None:
+        yield
+        return
+    lock_path = Path(path).with_suffix(".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    fh = open(lock_path, "a+")
+    try:
+        try:
+            fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as exc:
+            raise CheckpointLocked(
+                f"another capture holds the checkpoint lock ({lock_path}); "
+                "kill the other process or use a different --checkpoint path"
+            ) from exc
+        yield
+    finally:
+        fh.close()
+
+
 def _load_checkpoint(path):
     if path is None or not Path(path).exists():
         return None
@@ -609,14 +646,15 @@ def capture(rpc, from_slot, to_slot, out_dir, *, max_pages=20, retries=3,
     """Explicit-window capture: the caller names the slot interval."""
     genesis = _checked_identity(rpc)
     _validate_window(from_slot, to_slot)
-    try:
-        return _capture_window(rpc, genesis, from_slot, to_slot, out_dir,
-                               max_pages=max_pages, retries=retries,
-                               sleep=sleep, sleep_base=sleep_base,
-                               checkpoint=checkpoint, max_requests=max_requests,
-                               time_budget_s=time_budget_s)
-    except BudgetExceeded as exc:
-        return _budget_stop_report(from_slot, to_slot, out_dir, str(exc), checkpoint=checkpoint)
+    with _checkpoint_lock(checkpoint):
+        try:
+            return _capture_window(rpc, genesis, from_slot, to_slot, out_dir,
+                                   max_pages=max_pages, retries=retries,
+                                   sleep=sleep, sleep_base=sleep_base,
+                                   checkpoint=checkpoint, max_requests=max_requests,
+                                   time_budget_s=time_budget_s)
+        except BudgetExceeded as exc:
+            return _budget_stop_report(from_slot, to_slot, out_dir, str(exc), checkpoint=checkpoint)
 
 
 def _budget_stop_report(from_slot, to_slot, out_dir, reason, checkpoint=None):
@@ -666,14 +704,15 @@ def capture_recent_slots(rpc, lookback_slots, out_dir, *, max_pages=20, retries=
     genesis = _checked_identity(rpc)
     tip = rpc.get_slot()
     from_slot = tip - lookback_slots
-    try:
-        return _capture_window(rpc, genesis, from_slot, tip, out_dir,
-                               max_pages=max_pages, retries=retries,
-                               sleep=sleep, sleep_base=sleep_base,
-                               checkpoint=checkpoint, max_requests=max_requests,
-                               time_budget_s=time_budget_s)
-    except BudgetExceeded as exc:
-        return _budget_stop_report(from_slot, tip, out_dir, str(exc), checkpoint=checkpoint)
+    with _checkpoint_lock(checkpoint):
+        try:
+            return _capture_window(rpc, genesis, from_slot, tip, out_dir,
+                                   max_pages=max_pages, retries=retries,
+                                   sleep=sleep, sleep_base=sleep_base,
+                                   checkpoint=checkpoint, max_requests=max_requests,
+                                   time_budget_s=time_budget_s)
+        except BudgetExceeded as exc:
+            return _budget_stop_report(from_slot, tip, out_dir, str(exc), checkpoint=checkpoint)
 
 
 def main(argv=None):

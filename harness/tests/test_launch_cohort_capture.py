@@ -491,6 +491,45 @@ class CheckpointResumeBudget(unittest.TestCase):
         self.assertEqual(report["checkpoint"], ckpt)
         self.assertIn("collected_to_slot", report)
 
+    def test_checkpoint_lock_blocks_concurrent_capture(self):
+        """Incident regression (2026-11-05): a zombie sweep left running
+        raced a new capture on the same checkpoint and corrupted it. A
+        second capture while the lock is held must fail fast."""
+        out = tempfile.mkdtemp(prefix="lcc-lock-")
+        ckpt = str(Path(out) / "ckpt.json")
+        blocks = [make_block(100, [make_create_tx("SigA")])]
+        rpc = FakeRpc(blocks=blocks, sig_pages=[[{"signature": "SigA", "slot": 100, "err": None}]],
+                      tip=100)
+        with lcc._checkpoint_lock(ckpt):
+            # flock is per open-fd: a second open in this same process must
+            # fail to take the exclusive lock, exactly like another process.
+            with self.assertRaises(lcc.CheckpointLocked):
+                with lcc._checkpoint_lock(ckpt):
+                    pass
+            # and a full capture attempt fails fast with the same error
+            with self.assertRaises(lcc.CheckpointLocked):
+                lcc.capture(rpc, 100, 100, out_dir=out, sleep=lambda s: None,
+                            checkpoint=ckpt)
+        # lock released on exit: sequential captures both succeed (fresh
+        # out_dir for the second run — raw evidence is write-once, so the
+        # same out_dir must and does refuse with FileExistsError)
+        r1 = lcc.capture(rpc, 100, 100, out_dir=out, sleep=lambda s: None,
+                         checkpoint=ckpt)
+        self.assertEqual(r1["coverage_state"], "COMPLETE")
+        out2 = tempfile.mkdtemp(prefix="lcc-lock2-")
+        r2 = lcc.capture(rpc, 100, 100, out_dir=out2, sleep=lambda s: None,
+                         checkpoint=ckpt)
+        self.assertEqual(r2["coverage_state"], "COMPLETE")
+
+    def test_checkpoint_none_runs_without_lock_files(self):
+        out = tempfile.mkdtemp(prefix="lcc-nolock-")
+        blocks = [make_block(100, [make_create_tx("SigA")])]
+        rpc = FakeRpc(blocks=blocks, sig_pages=[[{"signature": "SigA", "slot": 100, "err": None}]],
+                      tip=100)
+        report = lcc.capture(rpc, 100, 100, out_dir=out, sleep=lambda s: None)
+        self.assertEqual(report["coverage_state"], "COMPLETE")
+        self.assertEqual(list(Path(out).glob("*.lock")), [])
+
     def test_budget_stop_report_is_blocked_and_resumable(self):
         out = tempfile.mkdtemp(prefix="lcc-budget-")
         rpc = FakeRpc(blocks=[make_block(100, [])], tip=100)
