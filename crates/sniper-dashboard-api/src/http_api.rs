@@ -192,6 +192,13 @@ async fn runs(
                     "evidence_class": r.evidence_class,
                     "proof_state": r.proof_state, "completeness": r.completeness,
                     "verdict": r.verdict,
+                    // Per-run scalars for the labeled all-runs overview;
+                    // each row stands alone (no cross-run sums, ever).
+                    "net_pnl_lamports": r.net_pnl_lamports.to_string(),
+                    "ending_nav_lamports": r.ending_nav_lamports.to_string(),
+                    "external_deposits_lamports": r.external_deposits_lamports.to_string(),
+                    "open_positions": r.open_positions,
+                    "has_s00_baseline": r.has_s00_baseline,
                 }))
                 .collect::<Vec<_>>()),
         )),

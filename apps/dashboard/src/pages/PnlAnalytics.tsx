@@ -16,6 +16,7 @@ import type { ComparisonRow } from '../api/types';
 import { useMode } from '../state/ModeContext';
 import { lamports, lamportsSigned, msToStamp, pnlClass, signGlyph } from '../fmt';
 import { Card, CardTitle, Chip, EmptyState, ErrorState, KpiCard, LiveDisabledBanner, LoadingState, PaperBanner, StateChip, UnavailablePanel } from '../components/ui';
+import AllRunsCard from '../components/AllRunsCard';
 
 const col = createColumnHelper<ComparisonRow>();
 
@@ -29,7 +30,7 @@ export default function PnlAnalytics() {
   const [sorting, setSorting] = useState<SortingState>([]);
 
   const table = useReactTable({
-    data: q.data?.payload.comparison ?? [],
+    data: q.data?.payload?.comparison ?? [],
     columns: [
       col.accessor('strategy', { header: 'Strategy', cell: (i) => <span className="font-data">{i.getValue()}</span> }),
       col.accessor((r) => BigInt(r.net_pnl_lamports), {
@@ -62,7 +63,7 @@ export default function PnlAnalytics() {
 
   const fees = useMemo(
     () =>
-      Object.entries(q.data?.payload.fees_by_kind_lamports ?? {})
+      Object.entries(q.data?.payload?.fees_by_kind_lamports ?? {})
         .filter(([, v]) => BigInt(v) !== 0n)
         .map(([kind, v]) => ({ kind, lamports: Number(BigInt(v)), display: lamports(v) }))
         .sort((a, b) => b.lamports - a.lamports),
@@ -72,7 +73,12 @@ export default function PnlAnalytics() {
   return (
     <div className="mx-auto max-w-6xl space-y-4">
       {mode === 'PAPER' ? <PaperBanner /> : <LiveDisabledBanner />}
-      {!runId && <EmptyState what="selected run" hint="Pick a run in the header; PnL views are strictly per-run." />}
+      {!runId && (
+        <>
+          <EmptyState what="selected run" hint="PnL views are strictly per-run. Pick a run below or in the header." />
+          <AllRunsCard />
+        </>
+      )}
 
       {q.isLoading && runId && <LoadingState label="PnL summary" />}
       {q.isError && runId && <ErrorState message={(q.error as Error).message} />}
@@ -81,7 +87,24 @@ export default function PnlAnalytics() {
       )}
 
       {q.data?.data_status === 'SOURCE_MISMATCH' && (
-        <ErrorState message={q.data.data_status_reason ?? 'receipt failed the S00-baseline gate'} />
+        <>
+          <Card>
+            <CardTitle right={<StateChip status={q.data.data_status} reason={q.data.data_status_reason} />}>
+              Comparison views voided for this run
+            </CardTitle>
+            <div className="rounded border border-neg/50 bg-neg/10 p-3 text-[12px]">
+              <p className="font-semibold text-neg">{q.data.data_status_reason}</p>
+              <p className="mt-2 text-muted">
+                This is an honest fail-closed state (SOUL Law 5: a missing S00 baseline voids
+                comparison views), not a loading failure. The run's own sealed scalars and trade
+                records are still served on <span className="text-fg">Portfolio</span> and{' '}
+                <span className="text-fg">Execution</span>, and its row is labeled in the
+                all-runs table below.
+              </p>
+            </div>
+          </Card>
+          <AllRunsCard />
+        </>
       )}
 
       {q.data?.data_status === 'OK' && q.data.payload && (

@@ -106,6 +106,16 @@ pub struct RunIndexEntry {
     pub completeness: String,
     pub verdict: String,
     pub artifact_sha256: String,
+    /// Per-run scalars for the labeled all-runs overview (each row stands
+    /// alone; the API never sums across runs).
+    pub net_pnl_lamports: i64,
+    pub ending_nav_lamports: i64,
+    pub external_deposits_lamports: i64,
+    pub open_positions: i64,
+    /// False for observation receipts without an S00 baseline row: their
+    /// comparison views are voided by design (SOUL Law 5) and the UI must
+    /// label them instead of hiding them.
+    pub has_s00_baseline: bool,
 }
 
 pub fn built_at(conn: &Connection) -> String {
@@ -124,8 +134,12 @@ pub fn list_runs(conn: &Connection) -> Vec<RunIndexEntry> {
 /// Mode-scoped run index (DASH-03: isolation enforced at the query layer).
 pub fn list_runs_in(conn: &Connection, mode: Option<TradeMode>) -> Vec<RunIndexEntry> {
     let mut stmt = match conn.prepare(
-        "SELECT id, engine, evidence_class, proof_state, completeness, verdict, artifact_sha256
-         FROM runs ORDER BY id",
+        "SELECT r.id, r.engine, r.evidence_class, r.proof_state, r.completeness, r.verdict,
+                r.artifact_sha256, r.net_pnl_lamports, r.ending_nav_lamports,
+                r.external_deposits_lamports, r.open_positions,
+                (SELECT COUNT(*) FROM run_comparisons c
+                  WHERE c.run_id = r.id AND c.strategy = 'S00') AS s00_rows
+         FROM runs r ORDER BY r.id",
     ) {
         Ok(s) => s,
         Err(_) => return Vec::new(),
@@ -142,6 +156,11 @@ pub fn list_runs_in(conn: &Connection, mode: Option<TradeMode>) -> Vec<RunIndexE
                 completeness: r.get(4)?,
                 verdict: r.get(5)?,
                 artifact_sha256: r.get(6)?,
+                net_pnl_lamports: r.get(7)?,
+                ending_nav_lamports: r.get(8)?,
+                external_deposits_lamports: r.get(9)?,
+                open_positions: r.get(10)?,
+                has_s00_baseline: r.get::<_, i64>(11)? > 0,
             },
             (),
         ))

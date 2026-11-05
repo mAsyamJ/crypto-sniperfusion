@@ -50,7 +50,7 @@ test('all five pages render with real data and honest states', async ({ page }) 
   await expect(page.getByText('PAPER / SIMULATED')).toBeVisible();
   // Select the wallet_follow run (wa7) by engine label.
   await selectFollowerRun(page);
-  await expect(page.getByText('EDGE_NOT_DEMONSTRATED')).toBeVisible();
+  await expect(page.getByText('EDGE_NOT_DEMONSTRATED').first()).toBeVisible();
 
   for (const p of PAGES.slice(1)) {
     await page.getByRole('link', { name: new RegExp(p.label, 'i') }).click();
@@ -79,18 +79,40 @@ test('PnL calendar reconciles and shows scope honesty', async ({ page }) => {
 test('PnL analytics shows fees, comparison and paper banner', async ({ page }) => {
   await page.goto('/pnl');
   await selectFollowerRun(page);
-  await expect(page.getByText('deposits are not PnL')).toBeVisible();
+  await expect(page.getByText('deposits are not PnL').first()).toBeVisible();
   await expect(page.getByText('Strategy comparison (S00 mandatory)')).toBeVisible();
   await shot(page, 'paper-pnl-1440');
+});
+
+test('all-runs overview: labeled rows, per-run values, select works', async ({ page }) => {
+  await page.goto('/');
+  const card = page.getByRole('table', { name: 'All runs in scope' });
+  await expect(card).toBeVisible({ timeout: 15_000 });
+  // 5 paper runs on the real corpus, each with its own values.
+  await expect(card.locator('tbody tr')).toHaveCount(5);
+  // Observation receipts (wa2, no S00) are labeled, not hidden.
+  await expect(card.getByText('no S00 · observation')).toHaveCount(4);
+  await expect(card.getByText('S00 present')).toHaveCount(1);
+  // Never-summed caption present.
+  await expect(page.getByText('never summed')).toBeVisible();
+  // Selecting the follower run from the table scopes the page.
+  await card.getByRole('button', { name: 'select' }).last().click();
+  await expect(page.getByText('EDGE_NOT_DEMONSTRATED').first()).toBeVisible();
+  // The voided observation run shows the typed panel on PnL, with the
+  // all-runs fallback (this is the run the operator reported as blank).
+  await page.goto('/pnl?mode=PAPER&run=0229a373e1521d2c');
+  await expect(page.getByText('Comparison views voided for this run')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(/missing S00 baseline/i)).toBeVisible();
+  await expect(page.getByRole('table', { name: 'All runs in scope' })).toBeVisible();
 });
 
 test('mode switch to REAL_MONEY shows disabled truth and clears caches', async ({ page }) => {
   await page.goto('/');
   await selectFollowerRun(page);
-  await expect(page.getByText('EDGE_NOT_DEMONSTRATED')).toBeVisible();
+  await expect(page.getByText('EDGE_NOT_DEMONSTRATED').first()).toBeVisible();
 
   await page.getByTestId('mode-REAL_MONEY').click();
-  await expect(page.getByText('LIVE TRADING DISABLED / NO VERIFIED REAL TRADES')).toBeVisible();
+  await expect(page.getByRole('note', { name: '' }).filter({ hasText: 'LIVE TRADING DISABLED' }).first()).toBeVisible();
   await expect(page.getByTestId('scope-chip')).toHaveText('scope: REAL_MONEY');
   // Run selector resets (no run from PAPER scope survives).
   await expect(page.getByTestId('run-selector')).toHaveValue('');
@@ -99,7 +121,7 @@ test('mode switch to REAL_MONEY shows disabled truth and clears caches', async (
 
   for (const p of PAGES.slice(1)) {
     await page.getByRole('link', { name: new RegExp(p.label, 'i') }).click();
-    await expect(page.getByText('LIVE TRADING DISABLED / NO VERIFIED REAL TRADES')).toBeVisible();
+    await expect(page.getByRole('note', { name: '' }).filter({ hasText: 'LIVE TRADING DISABLED' }).first()).toBeVisible();
     await expect(page.getByText('PAPER / SIMULATED')).toHaveCount(0);
   }
   await shot(page, 'realmoney-command-center-1440');
@@ -172,7 +194,7 @@ test('theme toggle renders both modes without breaking layout (R-34)', async ({ 
   await page.getByRole('button', { name: /switch to light theme/i }).click();
   await expect(page.locator('html.light')).toHaveCount(1);
   await shot(page, 'paper-command-center-1440-light');
-  await expect(page.getByText('EDGE_NOT_DEMONSTRATED')).toBeVisible();
+  await expect(page.getByText('EDGE_NOT_DEMONSTRATED').first()).toBeVisible();
 });
 
 test('axe: no serious/critical violations on any page (WCAG 2.2 AA scope)', async ({ page }) => {

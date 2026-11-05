@@ -16,6 +16,14 @@ export interface RunEntry {
   proof_state: string;
   completeness: string;
   verdict: string;
+  /** Per-run scalars (all-runs overview); rows are never summed. */
+  net_pnl_lamports: string;
+  ending_nav_lamports: string;
+  external_deposits_lamports: string;
+  open_positions: number;
+  /** False = observation receipt without an S00 row: comparison views are
+   * voided by design (SOUL Law 5) and must be labeled, not hidden. */
+  has_s00_baseline: boolean;
 }
 
 export interface RunDetail extends RunEntry {

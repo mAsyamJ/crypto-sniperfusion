@@ -26,7 +26,7 @@ export default function PnlCalendar() {
     enabled: !!runId,
   });
   const strategies = useMemo(
-    () => (summary.data?.payload.comparison ?? []).map((c) => c.strategy),
+    () => (summary.data?.payload?.comparison ?? []).map((c) => c.strategy),
     [summary.data],
   );
   const effectiveStrategy = strategy || strategies[0] || '';
@@ -37,7 +37,7 @@ export default function PnlCalendar() {
     enabled: !!runId && !!effectiveStrategy,
   });
 
-  const days = cal.data?.payload.days ?? [];
+  const days = cal.data?.payload?.days ?? [];
   const months = useMemo(() => [...new Set(days.map((d) => monthKey(d.day)))].sort(), [days]);
   const effectiveMonth = month || months[0] || '';
   const monthDays = days.filter((d) => monthKey(d.day) === effectiveMonth);
@@ -91,7 +91,7 @@ export default function PnlCalendar() {
                     {TZ_OPTIONS.map((z) => <option key={z}>{z}</option>)}
                   </select>
                 </label>
-                <Chip tone="accent">{cal.data?.payload.tz_label ?? ''}</Chip>
+                <Chip tone="accent">{cal.data?.payload?.tz_label ?? ''}</Chip>
               </div>
             }
           >

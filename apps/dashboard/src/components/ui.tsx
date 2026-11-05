@@ -133,7 +133,7 @@ export function LiveDisabledBanner() {
   );
 }
 
-export function Th({ children, numeric }: { children: ReactNode; numeric?: boolean }) {
+export function Th({ children, numeric }: { children?: ReactNode; numeric?: boolean }) {
   return (
     <th
       scope="col"
@@ -147,7 +147,7 @@ export function Th({ children, numeric }: { children: ReactNode; numeric?: boole
   );
 }
 
-export function Td({ children, numeric, className }: { children: ReactNode; numeric?: boolean; className?: string }) {
+export function Td({ children, numeric, className }: { children?: ReactNode; numeric?: boolean; className?: string }) {
   return (
     <td className={clsx('border-b border-border/60 px-2 py-1.5', numeric && 'text-right font-data', className)}>
       {children}

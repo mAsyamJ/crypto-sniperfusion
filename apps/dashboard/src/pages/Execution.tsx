@@ -26,7 +26,7 @@ export default function Execution() {
   });
 
   const rows = useMemo(
-    () => (q.data?.payload.rows ?? []).filter((r) => kindFilter === 'ALL' || r.kind === kindFilter),
+    () => (q.data?.payload?.rows ?? []).filter((r) => kindFilter === 'ALL' || r.kind === kindFilter),
     [q.data, kindFilter],
   );
 

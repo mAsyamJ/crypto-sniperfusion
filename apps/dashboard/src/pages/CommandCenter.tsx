@@ -7,6 +7,7 @@ import { useMode } from '../state/ModeContext';
 import { MODE_LABEL } from '../mode';
 import { lamportsSigned, pnlClass, signGlyph } from '../fmt';
 import { Card, CardTitle, Chip, EmptyState, ErrorState, KpiCard, LiveDisabledBanner, LoadingState, PaperBanner, StateChip } from '../components/ui';
+import AllRunsCard from '../components/AllRunsCard';
 
 export default function CommandCenter() {
   const { mode, runId } = useMode();
@@ -110,6 +111,8 @@ export default function CommandCenter() {
         )}
         {summary.isError && <ErrorState message={(summary.error as Error).message} />}
       </Card>
+
+      <AllRunsCard />
 
       <Card>
         <CardTitle>Freshness &amp; integrity</CardTitle>
