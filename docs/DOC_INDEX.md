@@ -71,6 +71,10 @@ Read order and precedence are defined in the `AGENTS.md` header. Summary:
 | File | Role | Status |
 |---|---|---|
 | `TOOLING_AUDIT.md` | DASH-00 tooling receipt: baseline tests, upstream license/security review, project-local skill pins (AntiSlop `during`, UI/UX Pro Max, Superpowers workflows), deferred runtime-dependency review | LIVING (extends per DASH milestone; evidence: `docs/evidence/DASH-00-20261105.md`) |
+| `REQUIREMENTS.md` | DASH-01: verified provenance matrix (P1–P17, EXISTS/NEEDS_ADAPTER/NEEDS_NEW_TELEMETRY/BLOCKED_DATA), known defects D-1–D-8, module requirements, API contract v1, financial/calendar contracts, state catalog | LIVING (extends per milestone; evidence: `docs/evidence/DASH-01-20261105.md`) |
+| `DESIGN.md` | DASH-01: design system — research-terminal identity, contrast-measured tokens (dark+light), typography/density, state presentation, IA + layout sketches, a11y, AntiSlop `during` rationale + rejected alternatives | LIVING (token changes versioned) |
+| `ARCHITECTURE.md` | DASH-01: implementation design — sniper-observability + sniper-dashboard-api crates, PF1 calendar extension, SQLite schema, determinism/rebuild, dashboard threat model (DA-1–DA-7) | LIVING |
+| `TEST_PLAN.md` | DASH-01: red-first test definitions (T-CAL/T-VER/T-IMP/T-DEP/T-POS/T-MON/T-S00/T-SEC/T-DET + DASH-03 browser ids) — the DASH-02 execution plan | LIVING (extends per milestone) |
 
 ## docs/history/ — archived superseded documents
 
@@ -96,8 +100,9 @@ Superseded root-level documents moved out of the tree top on 2026-11-05. Content
 | `0002-clean-room-licensing.md` | Clean-room licensing policy for upstream references | ACCEPTED |
 | `0003-solana-sdk-generation.md` | Solana SDK generation selection (Gen-2) | ACCEPTED |
 | `0012-harness2-integration.md` | Google Harness² integration method | ACCEPTED |
+| `0013-dashboard-read-only-mirror.md` | Control Tower dashboard: read-only mirror architecture (PF1 sole financial writer; loopback GET-only API; disposable SQLite projection; DASH milestone sequencing) | ACCEPTED (2026-11-05) |
 
-Numbers 0004–0011 are unused (reserved by an interim plan, never written). Do not renumber 0012; the next ADR takes 0013.
+Numbers 0004–0011 are unused (reserved by an interim plan, never written). Do not renumber 0012; the next ADR takes 0014.
 
 ## docs/evidence/ — write-once execution receipts
 

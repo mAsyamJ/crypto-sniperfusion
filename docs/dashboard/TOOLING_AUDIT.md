@@ -81,7 +81,7 @@ npx --yes skills@latest list                                            # exit 0
 Two pin layers are committed:
 
 1. **`skills-lock.json`** (repo root, written by the CLI): per-skill `source`, `sourceType: github`, `skillPath`, and `computedHash` (SHA-256 of the skill). `npx skills experimental_install` can restore from it.
-2. **SKILL.md SHA-256 pins** (recorded here for the receipt; identical content implies identical hashes to the lock file's computed hashes):
+2. **SKILL.md SHA-256 pins** (recorded here as a second, finer-grained pin layer; note the two layers hash different domains — the lock file hashes the whole skill directory, the table below hashes only `SKILL.md` — corrected 2026-11-05 in the DASH-01 session; the original draft wrongly implied the hashes would coincide):
 
 | Skill | Source | SKILL.md sha256 (first 16 hex) |
 |---|---|---|
