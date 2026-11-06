@@ -39,6 +39,12 @@ Read order and precedence are defined in the `AGENTS.md` header. Summary:
 | `SNIPERFUSION_DASHBOARD_SESSION_LAUNCHER.md` | One-session local dashboard agent entrypoint; bounded milestone and evidence handoff | LIVING DASHBOARD WORKFLOW (baseline `fb1a762`) |
 | `DASHBOARD_EXECUTE_PROMPT.md` | Copy-ready dashboard engineering agent start prompt; delegates to dashboard launcher/master plan | LIVING DASHBOARD WORKFLOW (baseline `fb1a762`) |
 
+## docs/dashboard/ — Control Tower engineering
+
+| File | Role | Status |
+|---|---|---|
+| `TOOLING_AUDIT.md` | DASH-00 operator-provided tooling installation, pin and verification receipt; local branch artifacts are not yet published to main | POINT-IN-TIME RECEIPT COPY (2026-11-05; verify against local canonical file) |
+
 ## docs/ — engineering and governance
 
 | File | Role | Status |
