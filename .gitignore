@@ -26,3 +26,9 @@ harness/runs/
 
 # Dedicated Devnet test wallet; NEVER commit any signer files
 /harness/devnet-keys/
+
+# Control Tower frontend (DASH-03): deps and build output are local artifacts
+apps/dashboard/node_modules/
+apps/dashboard/dist/
+apps/dashboard/test-results/
+apps/dashboard/playwright-report/

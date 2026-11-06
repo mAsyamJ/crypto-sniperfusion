@@ -1,0 +1,101 @@
+@import '@fontsource/fira-sans/300.css';
+@import '@fontsource/fira-sans/400.css';
+@import '@fontsource/fira-sans/500.css';
+@import '@fontsource/fira-sans/600.css';
+@import '@fontsource/fira-code/400.css';
+@import '@fontsource/fira-code/500.css';
+
+/* Design tokens (DESIGN.md §3) — every pair contrast-measured via the
+   antislop-human checker; dark is the default research-terminal theme. */
+:root, .dark {
+  --bg: #0b1120;
+  --surface: #111a2e;
+  --surface-2: #1a2440;
+  --border: #2a3a5c;
+  --fg: #e6edf7;
+  --fg-muted: #9fb0cc;
+  --accent: #22d3ee;
+  --on-accent: #0b1120;
+  --pos: #34d399;
+  --neg: #f87171;
+}
+.light {
+  --bg: #f5f7fb;
+  --surface: #ffffff;
+  --surface-2: #eceff6;
+  --border: #c9d4e5;
+  --fg: #0f172a;
+  --fg-muted: #475569;
+  --accent: #0e7490;
+  --on-accent: #ffffff;
+  --pos: #047857;
+  --neg: #b91c1c;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  font-size: 16px;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+body {
+  margin: 0;
+  font-family: 'Fira Sans', system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+/* Numerals: always tabular in data contexts (DESIGN.md §4). */
+.font-data,
+table td.num,
+.tabular {
+  font-family: 'Fira Code', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Hatched pattern for UNAVAILABLE cells/chips (not-color-alone, R-39). */
+.hatched {
+  background-image: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 4px,
+    color-mix(in srgb, var(--fg-muted) 35%, transparent) 4px,
+    color-mix(in srgb, var(--fg-muted) 35%, transparent) 6px
+  );
+}
+
+/* SYNTHETIC watermark overlay (permanent, low-contrast by design) */
+.watermark-synthetic {
+  position: relative;
+  overflow: hidden;
+}
+.watermark-synthetic::after {
+  content: 'SYNTHETIC';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(28px, 6vw, 84px);
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  color: color-mix(in srgb, var(--fg) 7%, transparent);
+  pointer-events: none;
+  transform: rotate(-24deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

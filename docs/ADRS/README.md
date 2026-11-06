@@ -12,8 +12,9 @@ An ADR records a **choice with lasting consequences** — one that is expensive 
 | 0002 | Clean-room licensing policy for upstream references | ACCEPTED | 2026-11-02 |
 | 0003 | Solana SDK generation selection (Gen-2, compile-spike driven) | ACCEPTED | 2026-11-02 |
 | 0012 | Native Google Harness² integration method | ACCEPTED | 2026-11-05 |
+| 0013 | Control Tower dashboard read-only mirror architecture | ACCEPTED (operationalizes the owner-approved dashboard mission files, PR #12) | 2026-11-05 |
 
-**Numbering note:** 0004–0011 are unused — reserved by an interim plan and never written. Do not renumber 0012 (it is referenced by commits and evidence); **the next ADR takes 0013**.
+**Numbering note:** 0004–0011 are unused — reserved by an interim plan and never written. Do not renumber 0012 (it is referenced by commits and evidence); **the next ADR takes 0014**.
 
 ## Candidates not yet written (backfill when touched next)
 

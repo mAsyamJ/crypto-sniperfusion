@@ -1,0 +1,29 @@
+[package]
+name = "sniper-dashboard-api"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+# Read-only loopback API over the verified projection (ADR-0013).
+# GET-only, Host/Origin enforced, no CORS, no mutation endpoints.
+# This crate must NEVER depend on sniper-runtime (signers/authz) — T-SEC5.
+
+[dependencies]
+sniper-observability.workspace = true
+rusqlite = { version = "0.37", features = ["bundled"] }
+serde.workspace = true
+serde_json.workspace = true
+axum = "0.8"
+tokio = { workspace = true, features = ["net"] }
+clap.workspace = true
+
+[dev-dependencies]
+sniper-strategy.workspace = true
+rusqlite = { version = "0.37", features = ["bundled"] }
+tempfile.workspace = true
+tower = { version = "0.5", features = ["util"] }
+tokio = { workspace = true, features = ["net", "io-util"] }
+http = "1"
+http-body-util = "0.1"
