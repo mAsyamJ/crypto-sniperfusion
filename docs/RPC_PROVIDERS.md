@@ -25,8 +25,8 @@ The entire S11+ strategy frontier is gated on real `coverage_state=COMPLETE` lau
 
 ## What G0 still needs (open blockers)
 
-1. ~~Launch capture at scale~~ **DONE at the coverage level (2026-11-05)**: 3,001-block COMPLETE window, 0 gaps — containing zero launches (zero create *attempts* per the sampled diagnostic; see `docs/evidence/G0-WINDOW-COMPLETE-20261105.md`). The remaining gap is market structure, not capture: repeat at launch-active hours; consider M4 launchpad program coverage.
-2. **Reserve/fee snapshots as-of decision** — Engine B refuses to run without observed reserves; the next collector capability (Mission B in `docs/evidence/G0-H8-session.md`).
+1. ~~Launch capture at scale~~ **DONE (2026-11-05 coverage; 2026-11-06 content — D1a)**: the 3,001-block COMPLETE window re-captured with the D0-fixed collector yields **232 `create_v2` launches / 232 unique mints, 0 gaps** — the prior "zero launches" was a decoder blind spot, not market structure (`docs/evidence/D1A-TIME-OF-DAY-CREATE-V2-20261106.md`). Time-of-day probes: creation not hour-gated. Capture hardening: transport-layer failures (timeouts/resets) now convert to `RpcError` (retry/gap, never crash); provider leg-deaths are resumable via flock+checkpoint; `getBlockHeight` on this endpoint serves stale values — use `getEpochInfo` for tip; 20-page `getSignaturesForAddress` cannot reach day-old windows from tip (block scan is the completeness path for historical windows).
+2. **Reserve/fee snapshots as-of decision** — Engine B refuses to run without observed reserves; the next collector capability (Mission B in `docs/evidence/G0-H8-session.md`); launch-time reserves already decoded in the D1a create records.
 3. **Multi-hour cohort** — prerequisite for the first real H8 tournament (W02) and any S11+ registration.
 
 ## Provider evaluation checklist (before any new provider or large collection)

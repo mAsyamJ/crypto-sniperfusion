@@ -22,6 +22,7 @@ import base64
 import fcntl
 import hashlib
 import json
+import http.client
 import os
 import sys
 import time
@@ -303,6 +304,14 @@ class JsonRpc:
             # RpcError so bounded retry / gap recording handles them instead
             # of crashing the capture.
             raise RpcError(f"HTTP {exc.code}: {exc.reason}", code=exc.code) from exc
+        except (urllib.error.URLError, TimeoutError, OSError,
+                http.client.HTTPException, ValueError) as exc:
+            # Transport-level failures (read timeouts, connection resets,
+            # truncated chunked bodies, malformed JSON responses) are
+            # provider failures too: same bounded-retry / gap-recording
+            # path, never a leg crash. A live D1a leg (2026-11-06) died on
+            # an unhandled read timeout escaping exactly here.
+            raise RpcError(f"transport failure: {exc!r}") from exc
 
     def _call(self, method, params):
         body = {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}

@@ -35,12 +35,12 @@ Policy semantics live in code (`crates/sniper-strategy`) and the PF1 receipt —
 
 ## Frontier families (SOUL.md §5)
 
-**Gate order for data:** a real COMPLETE cohort containing actual launches precedes any S11+ registration (`SOUL.md` §6). Until G0 delivers that cohort, the registry must refuse real-data trials.
+**Gate order for data:** a real COMPLETE cohort containing actual launches precedes any S11+ registration (`SOUL.md` §6). **That cohort EXISTS since 2026-11-06 (D1a): COMPLETE, 3,001/3,001 blocks, 0 gaps, 232 `create_v2` launches** (`docs/evidence/D1A-TIME-OF-DAY-CREATE-V2-20261106.md`) — real-data registration is lawful once D2 (reserve snapshots) and PR-2 (engine execution on the cohort) land.
 
 | ID | Family | Status | Blocked by |
 |---|---|---|---|
-| S11 | Filtered under-6h entry (selection) | FRONTIER — UNIMPLEMENTED | Market structure: capture machinery proven at scale (3,001-block COMPLETE window) but zero launch attempts observed — needs a launch-active window or M4 launchpad coverage |
-| S12 | Quality-filtered graduation entry (event) | FRONTIER — UNIMPLEMENTED | Same as S11 (zero launches in completed window) + post-graduation reserve snapshots for Engine B |
+| S11 | Filtered under-6h entry (selection) | FRONTIER — UNIMPLEMENTED | D2 reserve snapshots + PR-2 execution on the D1a cohort (data gate RESOLVED 2026-11-06; 82–87% pump-tx failure regime is the entry-cost frame) |
+| S12 | Quality-filtered graduation entry (event) | FRONTIER — UNIMPLEMENTED | D2 post-graduation reserve snapshots for Engine B (data gate RESOLVED 2026-11-06) |
 | S13 | Mid-life slow mooner (survivor) | FRONTIER — UNIMPLEMENTED | G0 cohort + multi-day observation horizon |
 | S14 | Provenance-filtered leader follow (WA4 continuation) | FRONTIER — UNIMPLEMENTED | Calm-window leader re-observation — all leaders observed to date lost money or had unknown basis (congestion storm) |
 | EX | Exit engine (death-signal + staged exits) | COMPONENT — UNIMPLEMENTED | Attaches to any accepted entry family; evaluated A/B on identical fills |

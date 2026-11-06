@@ -646,6 +646,74 @@ class CheckpointResumeBudget(unittest.TestCase):
         stops = list(Path(out).glob("budget-stop-*.json"))
         self.assertTrue(stops and oct(stops[0].stat().st_mode & 0o777) == oct(0o444))
 
+    def test_http_transport_converts_transport_failures_to_rpc_error(self):
+        """D1a (2026-11-06): read timeouts / resets mid-capture are provider
+        failures (bounded retry + gap recording), never leg crashes. A live
+        leg died on an unhandled TimeoutError escaping _http_transport."""
+        import http.client
+        client = lcc.JsonRpc(url="https://x")
+        failures = [
+            TimeoutError("The read operation timed out"),
+            urllib.error.URLError("connection refused"),
+            ConnectionResetError("reset by peer"),
+            http.client.IncompleteRead(b"partial"),
+            http.client.RemoteDisconnected("no response"),
+            ValueError("no json could be decoded"),
+        ]
+        for exc in failures:
+            with mock.patch.object(lcc.urllib.request, "urlopen", side_effect=exc):
+                with self.assertRaises(lcc.RpcError, msg=repr(exc)):
+                    client._call("getBlock", [101, {}])
+
+    def test_capture_records_gap_on_persistent_transport_timeout(self):
+        """A slot whose getBlock always times out at the transport layer
+        becomes a ProviderUnavailable gap; the capture completes the rest
+        instead of dying. Routes through the real JsonRpc transport path
+        (the live D1a leg died with TimeoutError escaping _http_transport)."""
+        out = tempfile.mkdtemp(prefix="lcc-timeout-")
+        blocks = [make_block(100, []), make_block(101, []), make_block(102, [])]
+        fake = FakeRpc(blocks=blocks, tip=102)
+        client = lcc.JsonRpc(url="https://x")
+
+        class _Resp:
+            def __init__(self, payload):
+                self._payload = payload
+
+            def read(self):
+                return json.dumps(self._payload).encode()
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+        def fake_urlopen(req, timeout=30):
+            body = json.loads(req.data.decode())
+            method, params = body["method"], body["params"]
+            if method == "getGenesisHash":
+                result = fake.get_genesis_hash()
+            elif method == "getSlot":
+                result = fake.get_slot()
+            elif method == "getBlock":
+                if params[0] == 101:
+                    raise TimeoutError("The read operation timed out")
+                result = fake.get_block(params[0])
+            elif method == "getSignaturesForAddress":
+                result = fake.get_signatures_for_address(
+                    params[0], **(params[1] if len(params) > 1 else {}))
+            else:
+                raise AssertionError(method)
+            return _Resp({"jsonrpc": "2.0", "id": 1, "result": result})
+
+        with mock.patch.object(lcc.urllib.request, "urlopen", side_effect=fake_urlopen):
+            report = lcc.capture(client, 100, 102, out_dir=out, sleep=lambda s: None)
+        self.assertEqual(report["coverage_state"], "INCOMPLETE")
+        kinds = {g["slot"]: g["kind"] for g in report["gaps"]}
+        self.assertEqual(kinds.get(101), "ProviderUnavailable")
+        self.assertIn(100, report["verified_blocks"])
+        self.assertIn(102, report["verified_blocks"])
+
     def test_rate_limit_backoff_is_exponential_and_capped(self):
         delays = []
         def sleep_fn(d):

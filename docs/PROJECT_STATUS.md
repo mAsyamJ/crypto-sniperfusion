@@ -201,3 +201,17 @@ First at-scale COMPLETE cohort window: `[465625744, 465628744]`, 3,001/3,001 blo
 **What is NOT claimed:** no claim that `create_v2` launches occurred or didn't occur in the window (unmeasured); "zero create attempts" from the prior receipt is downgraded in a NEW file to "zero LEGACY create attempts; `create_v2` unmeasured"; venue-migration (LetsBonk/LaunchLab) remains an unproven hypothesis — no M4 adapter justified by this audit; no market data captured, no strategy evaluated, no P&L (`NOT_APPLICABLE`); S00 still champion, `EDGE_NOT_DEMONSTRATED` everywhere; Rust decoder unchanged; the `wallet_observer.rs:178-225` ALT-shape defect (wallet-alpha venue path, same defect class) is documented and DEFERRED to its own H-stream fix; nothing pushed.
 
 **Next:** D1a time-of-day discrimination at launch-active hours with the create_v2-aware tooling (cheapest probe; one window with real creates unblocks the entire frontier), or D1b venue widening with measured evidence; H-stream follow-up: wallet_observer ALT fix red-first. Receipt: `docs/evidence/D0-LAUNCH-ATTRIBUTION-AUDIT-20261105.md`.
+
+
+## D1a time-of-day + create_v2 re-measurement session (2026-11-06, main)
+
+**The "zero launches" market fact is REFUTED — the S11+ data gate is open.** Package D1a (`GOAL_PLAN_PROMPT.md` §4), read-only mainnet, operator endpoint env-only.
+
+- **Probe A (same 60-slot sample, D0-fixed diagnostic):** `create_v2` attempts **6 ok / 3 fail** in the exact window previously reported zero-create (sample reproduction proven: aggregates match the original diagnostic exactly). Legacy `create` family: 0/0 — dead.
+- **Probe B (2026-11-05 20:00–21:00 UTC, US evening):** `create_v2` **7 ok / 9 fail**; pump-tx density 2.6× the quiet hour. **Creation is not hour-gated at sample resolution** — the zero-create result never needed a time-of-day explanation.
+- **Full-window re-capture (D0-fixed collector):** `[465625744, 465628744]` → **COMPLETE, 3,001/3,001 blocks, 0 gaps, 232 create events / 232 unique mints** (all `create_v2`; 181 SOL-quote / 51 alt-quote; ≈1.3k launches/hour; launch-time reserves decoded). Manifest `manifest-20261106T140626-7720-a3c54ccba14fb2e6.json` (write-once 0444). **First real COMPLETE cohort containing actual launches in repo history** — `SOUL.md` §6 gate satisfied at the data level.
+- **Engineering (red-first):** transport-layer failures (read timeouts, resets, truncated bodies, malformed JSON) in `launch_cohort_capture.py` now convert to `RpcError` (bounded retry + gap recording, never a leg crash; a live leg died on an unhandled `TimeoutError`). Tests 132 → **134/134**, exit 0. Two undiagnosed silent provider-side leg deaths — both resumable via flock+checkpoint, window completed in 5 legs.
+- **Open observations:** dominant successful discriminator `e445a52e51cb9a1d` is NOT in the official IDL (identify before instruction-level strategy work); `getBlockHeight` serves stale values on this endpoint (use `getEpochInfo`); 20-page signature cap can't reach day-old windows (block scan is the completeness path for historical windows).
+- **What is NOT claimed:** no strategy evaluated, no trial registered, no P&L; S00 remains champion, `EDGE_NOT_DEMONSTRATED`; all outputs `nonpromotable`.
+
+**Next:** D2 reserve/fee snapshot capability on the found launches (launch-time reserves already captured) → PR-2 Engine A/B + independent NAV on this cohort → S11 preregistration becomes lawful. H-stream: `wallet_observer.rs` ALT fix. Receipt: `docs/evidence/D1A-TIME-OF-DAY-CREATE-V2-20261106.md`.

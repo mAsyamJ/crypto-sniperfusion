@@ -65,7 +65,7 @@ One bounded cycle per session. Every step leaves a write-once receipt. Never pro
 7. **CRITIC** — independent critic role produces a separate rejection/acceptance artifact; the holdout opens at most once.
 8. **DECIDE** — promote to shadow-candidate / demote to rejected registry; update `docs/PROJECT_STATUS.md`; the receipt is the deliverable.
 
-**Gate order:** a real COMPLETE cohort containing actual launches precedes any S11+ registration. Today G0 mechanics work but **zero successful launches have been captured** (the provider `getBlock` gap); until that is fixed, the registry must refuse new trials on real-data claims.
+**Gate order:** a real COMPLETE cohort containing actual launches precedes any S11+ registration. **That cohort EXISTS since 2026-11-06 (D1a): COMPLETE, 3,001/3,001 blocks, 0 gaps, 232 `create_v2` launches** — the earlier "zero successful launches captured" was a decoder blind spot, now superseded (`docs/evidence/D1A-TIME-OF-DAY-CREATE-V2-20261106.md`). S11+ registration remains gated on D2 reserve snapshots + PR-2 engine execution over the real cohort.
 
 Synthetic rules: `research_cycle.py` / `research_batch.py` / `agentctl.py research-demo` outputs are permanently `promotable=false`; never feed them to the `promote` command, label them as chain-execution evidence, or use them to claim profitability. Candidate generators and independent critics are separate roles.
 
@@ -96,12 +96,12 @@ Read `docs/WALLET_ALPHA_UPSTREAM_AUDIT.md`, `docs/WALLET_ALPHA_GOAL_PLAN.md`, an
 
 The owner priority is **net realizable P&L after all trading/operating costs and risk controls**. Read `docs/PROFIT_FIRST_GOAL_PLAN.md` and `harness/docs/PROFIT_FIRST_AGENT_MISSION.md`; invoke `.agents/skills/sniper-pnl-architect/SKILL.md` for financial reporting or strategy selection. Reuse the H7/PF1 independent oracle and evaluator — do not rewrite or double-count. Separate `SYNTHETIC | FORK_MECHANICS | SHADOW_ESTIMATE | LIVE_CONFIRMED` receipt classes; ensure realistic executable exit marks; isolate external deposits/withdrawals and SOL/USD beta; fail closed on missing real fees/reserves. Fee truth is on-chain-observed (curve 95+30 bps; PumpSwap tiered 125→30 bps) — never hardcode or backfill.
 
-## 12. Current facts snapshot (2026-11-05; verify against `docs/PROJECT_STATUS.md` at HEAD)
+## 12. Current facts snapshot (2026-11-06; verify against `docs/PROJECT_STATUS.md` at HEAD)
 
 - Verified and merged: protocol decode/builders (M0–M3c incl. real-ELF fork execution), paper broker (H2), P&L V2 + fee provenance (PF0/PF1), strategy SDK + evaluator + 12 negative controls (H7), H8 registry machinery, Wallet Alpha stack (WA0→WA-full), Harness2 deterministic integration, INFRA 1–3 read-only RPC integration.
 - **Verdict everywhere: `EDGE_NOT_DEMONSTRATED` — S00 NO_TRADE dominates** all tested policies on synthetic cohorts and real signals.
-- **G0: mechanics COMPLETE, zero successful launches captured** (three COMPLETE windows landed in an 87% pump-tx failure storm). The provider `getBlock` gap is the single blocker for the entire S11+ frontier.
-- H3 ≥7-day prospective shadow: NOT_STARTED (the harness refuses to fabricate it). Model-backed Harness2: BLOCKED. Next work package: `docs/NEXT_GOAL_H8_G0.md` PR-1→PR-4.
+- **G0: RESOLVED (2026-11-06, D1a)** — the first real COMPLETE cohort containing actual launches exists: window `[465625744, 465628744]`, 3,001/3,001 blocks, 0 gaps, **232 `create_v2` launches** (prior "zero launches" was a decoder blind spot). Frontier is now gated on D2 reserve snapshots + PR-2 engine execution on this cohort (`docs/evidence/D1A-TIME-OF-DAY-CREATE-V2-20261106.md`).
+- H3 ≥7-day prospective shadow: NOT_STARTED (the harness refuses to fabricate it). Model-backed Harness2: BLOCKED. Next work package: D2 → PR-2 per `GOAL_PLAN_PROMPT.md` §4 / `docs/NEXT_GOAL_H8_G0.md`.
 - Legacy `agent_mission.py plan` and older H5–H8 documents carry stale implementation-state strings; treat `docs/evidence/*` and actual code as present truth.
 
 ## 13. Documentation change discipline
