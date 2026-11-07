@@ -30,6 +30,23 @@ Standing verdict everywhere: **`EDGE_NOT_DEMONSTRATED` — S00 dominates every t
 - [ ] **PR-2** — Engine A/B + independent NAV on the identical real cohort (`docs/NEXT_GOAL_H8_G0.md`)
 - [ ] **W02 tournament** — copyability-ranked follow vs S00/S02/RX on a multi-hour real cohort; only then is any holdout opening justified
 
+## 2A. Owner priority — filtered, real-data PAPER profitability (2026-11-07)
+
+**Contract:** `docs/NEXT_GOAL_24H_FILTERED_PAPER_RESEARCH.md`; **research:** `docs/research/2026-11-07-multisource-token-reach-and-filtering.md`; **launcher:** root `GOAL_PLAN_PROMPT.md`. These are **UNIMPLEMENTED** until evidence/owner system says otherwise. The 232-launch D1a COMPLETE census is done, but NO profitable real-cohort strategy or 24/7 paper execution has been demonstrated.
+
+- [ ] **D2A/D2B** — verify locally available 232-launch raw cohort + immutable hash; build as-of-decision reserve/fee/config snapshots (181 SOL quote; 51 unsupported alternate quotes require explicit abstention).
+- [ ] **PR2** — run Engines A/B and independent PF1 NAV on the identical real cohort; report realistic modeled fills, failed fees, exit/unexitable exposure and S00.
+- [ ] **F0/F1** — mandatory universal G1–G7 deterministic filtering for provider, token, wallet, dataset, Harness² proposal, execution and dashboard boundaries; Token-2022/MEV/drainer/honeypot negative controls.
+- [ ] **API0** — documented DexScreener REST/WebSocket and Jupiter Tokens V2 adapters, provenance/causal timestamps, bounded rate limits, fixtures and quote-only use.
+- [ ] **API1** — first-party Raydium LaunchLab and Meteora DBC on-chain launch/venue adapters; measure verified marginal token reach.
+- [ ] **API2** — conditional Birdeye, Bitquery, CoinGecko/GeckoTerminal, Shyft, GoPlus/RugCheck, Helius and Orca additions only after explicit auth/quota/terms/cost and source-value probes.
+- [ ] **OPS24** — 24h no-AI, no-signer paper daemon fault-injected soak with restart/replay and gap receipts; not the ≥7-day prospective strategy shadow.
+- [ ] **S11EX + STRAT** — real-data H8 preregistered filtered entry/EX exit and S12/S13/S14 follow-on with no lookahead, independent critic, honest S00 comparisons and stress.
+- [ ] **H2SAFE** — genuine Harness² deterministic channel expanded with safe benchmark negative-controls; model-backed worker stays operator-blocked; offline RL only, never direct live policy change.
+- [ ] **SHADOW7** — ≥7-day genuine forward read-only shadow, one-use holdout, human paper-only promotion under G-A…G-G.
+
+**Definition of profitable:** positive, risk-bounded, after-cost realizable incremental NAV versus S00 on unbiased creator/day OOS and shadow; not a guaranteed goal and not authorization for funded trades.
+
 ## 3. Strategy frontier (gated on §2; doctrine in `SOUL.md` §5)
 
 - [ ] **S11** — filtered under-6h entry: holder band 1k–5k, organic curve-fill 6–24h, bundler tier 11–50, dev-history score, insider <3%
