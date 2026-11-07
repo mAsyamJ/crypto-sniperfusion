@@ -32,8 +32,8 @@ Read order and precedence are defined in the `AGENTS.md` header. Summary:
 | `SOUL.md` | Doctrine: winning definition, Ten Laws, strategy frontier, gates G-A…G-G | LIVING (deliberate amendment only; append-only anchors) |
 | `SECURITY.md` | Security policy: key hygiene, reporting, CI enforcement, trading-safety invariants | LIVING |
 | `CONTRIBUTING.md` | Human-facing mirror of the operating rules | LIVING |
-| `GOAL_PLAN_PROMPT.md` | Owner-authorized D→M→S→H session mission; one bounded package per invocation | LIVING OPERATOR WORKFLOW (baseline `adb5760`) |
-| `SESSION_LAUNCHER_PROMPT.md` | Root-level local agent entrypoint that loads the goal plan | LIVING OPERATOR WORKFLOW (baseline `adb5760`) |
+| `GOAL_PLAN_PROMPT.md` | Owner-authorized D2→PR2→filter→API→24h→research one-package session mission; no funded trading or agent push | LIVING OPERATOR WORKFLOW (updated 2026-11-07; baseline `3143999`) |
+| `SESSION_LAUNCHER_PROMPT.md` | Root local agent launcher loading the current goal plan, one bounded package, local commit only | LIVING OPERATOR WORKFLOW (updated 2026-11-07) |
 | `SNIPERFUSION_DASHBOARD_ARCHITECTURE_PLAN.md` | Local read-only dashboard architecture, canonical producer-only telemetry and financial correctness | POINT-IN-TIME DESIGN (baseline `fb1a762`) |
 | `SNIPERFUSION_DASHBOARD_GOAL_PLAN_PROMPT.md` | DASH-00…DASH-07 independent UI/full-stack implementation mission; not the trading goal plan | LIVING DASHBOARD WORKFLOW (baseline `fb1a762`) |
 | `SNIPERFUSION_DASHBOARD_SESSION_LAUNCHER.md` | One-session local dashboard agent entrypoint; bounded milestone and evidence handoff | LIVING DASHBOARD WORKFLOW (baseline `fb1a762`) |
@@ -59,7 +59,8 @@ Read order and precedence are defined in the `AGENTS.md` header. Summary:
 | `SOLANA_COMPATIBILITY.md` | Solana SDK generation spike evidence (M0) | POINT-IN-TIME |
 | `UPSTREAM_MANIFEST.md` | Pinned upstream repos, licenses, attribution, amendments | LIVING (update on any pin change) |
 | `UPSTREAM_INTEGRATION_MATRIX.md` | What each upstream contributes and how | LIVING |
-| `NEXT_GOAL_H8_G0.md` | Active mission: unblock G0, build H8 council (PR-1…PR-4) | POINT-IN-TIME plan (active) |
+| `NEXT_GOAL_H8_G0.md` | Earlier G0/H8 milestone plan; G0 launch capture gate now resolved by D1a | POINT-IN-TIME (historical baseline) |
+| `NEXT_GOAL_24H_FILTERED_PAPER_RESEARCH.md` | D2/PR2-first dependency ladder for universal filtering, API reach, deterministic 24h paper, Harness² and H8 evaluation | POINT-IN-TIME OWNER CONTRACT (2026-11-07; baseline `3143999`) |
 | `PROFIT_FIRST_GOAL_PLAN.md` | H8 / P&L V2 goal plan | POINT-IN-TIME plan |
 | `WALLET_ALPHA_GOAL_PLAN.md` | Wallet Alpha implementation contract | POINT-IN-TIME plan |
 | `WALLET_ALPHA_UPSTREAM_AUDIT.md` | Upstream audit + amendments (WA0) | REFERENCE |
@@ -95,6 +96,7 @@ Superseded root-level documents moved out of the tree top on 2026-11-05. Content
 | File | Role | Status |
 |---|---|---|
 | `2026-11-02-initial-engineering-design-review.md` | Original 733-line engineering design review (moved from root `research.md`) | POINT-IN-TIME |
+| `2026-11-07-multisource-token-reach-and-filtering.md` | Official API/provider landscape, canonical data, G1–G7 filters, Solana security, 24/7 paper, Harness²/RL research | POINT-IN-TIME RESEARCH (baseline `3143999`) |
 
 ## docs/ADRS/ — architecture decision records
 
