@@ -109,3 +109,16 @@ The owner priority is **net realizable P&L after all trading/operating costs and
 - `SOUL.md` is doctrine: amend deliberately (owner-visible), never casually; evidence anchors and rejected registry are append-only.
 - Evidence files and receipts are immutable once written; corrections happen in new files.
 - This file is reorganized by function; new operational rules land as sections, dated facts land in `docs/PROJECT_STATUS.md`, strategy content lands in `SOUL.md` §5. Do not let this file regress into an append-only log.
+
+
+## 14. Universal deterministic admission (2026-11-07 owner rule)
+
+**Every subsystem MUST filter and validate its inputs before outputs influence downstream decisions.** Providers: origin/chain/schema/timing/quotas. Tokens: full G1–G7 risk and market-quality gate. Wallet Alpha: real cost basis, wallet funding graph and wash flags. Venues: on-chain account/IDL/protocol compatibility. Data: completeness, causal as-of timestamp and provenance. H8 research: preregistration, negative controls and protected holdout. Harness²: isolated safe worker and proposal validation. Paper orders: G1–G7 and `RiskEngine::authorize`. Dashboard: verified hash/sealed artifact only. Each decision is a pure deterministic versioned ALLOW_PAPER/WATCH/BLOCK with reason/evidence hash, expiry and explicit UNKNOWN.
+
+**No external API, token metadata, advertised boost, LLM conclusion, verification badge or third-party safety score alone can authorize entry or override a BLOCK.** Validate Token-2022 hooks, permanent delegates, transfer fees, default frozen, unknown extensions, mint/freeze authority, vault/reserve owner and sell feasibility against on-chain facts. Mandatory state missing → WATCH/BLOCK, never optimistic buy. Optional enrichment outages only reduce quality confidence. Keep separate authorized risk-reducing exit handling for already-open PAPER positions when new entries stop. Never server-fetch arbitrary token website/metadata URLs. Research and implementation: `docs/research/2026-11-07-multisource-token-reach-and-filtering.md` and `docs/NEXT_GOAL_24H_FILTERED_PAPER_RESEARCH.md`.
+
+## 15. Deterministic 24/7 operation and safe AI learning (2026-11-07 owner rule)
+
+The Rust **24/7 data/filter/paper service** must operate, catch up, reconcile, fail closed on new entry and journal results without ANY LLM or Harness² availability. A long-running deterministic daemon is categorically different from the coding/research agent, which still executes **exactly one bounded L0–L7 work package per operator-invoked session, then stops**. No autonomous agent loop, automatic pushing, paid infrastructure or unattended funded trading is authorized.
+
+Genuine pinned Google Harness² optimizes the engineering/research harness through bounded propose/probe/compose; its model-backed worker remains blocked until operator-approved no-secrets isolation. Offline contextual bandits/RL may propose research strategies but cannot self-edit production decisions or leak labels/holdouts. The H8 ledger, independent PF1 NAV vs S00, clustered OOS tests, G-A–G-G and human approval remain nondelegable promotion gates. No AI may possess keys, signer capability, or an override path into `LiveCapability`.
