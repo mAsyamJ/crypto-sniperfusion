@@ -1,5 +1,8 @@
 # DASHBOARD EXECUTE PROMPT — SniperFusion Control Tower
 
+> **HISTORICAL / NOT AN ACTIVE SESSION — archived 2026-11-07.** This dashboard prompt is preserved for provenance after DASH-00..03 merged. Do NOT execute its launch instructions or treat its old milestones as current. Canonical project entrypoint: `SESSION_LAUNCHER_PROMPT.md` → `GOAL_PLAN_PROMPT.md`; current dashboard contracts: `docs/dashboard/REQUIREMENTS.md` and `docs/dashboard/ARCHITECTURE.md`. Original content follows unaltered.
+
+
 **Purpose:** copy this text into an agent running at the root of the `mAsyamJ/crypto-sniperfusion` repository. This is an execution launcher for the separate dashboard workstream, **not** the existing root trading/research `GOAL_PLAN_PROMPT.md`.
 
 ## Master agent instruction

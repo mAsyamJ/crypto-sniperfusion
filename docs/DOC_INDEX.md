@@ -23,6 +23,10 @@ Read order and precedence are defined in the `AGENTS.md` header. Summary:
 | HISTORICAL | Superseded; kept for provenance | Read for history only; conflicts resolve against LIVING docs |
 | RECEIPT | Write-once evidence | Immutable; corrections in new files (see `docs/evidence/README.md`) |
 
+## Sole active mission and no-shadow rule
+
+**One project-wide execution plan**: root `GOAL_PLAN_PROMPT.md`. **One entrypoint**: root `SESSION_LAUNCHER_PROMPT.md`. **One milestone checklist**: `docs/GOALS.md`. **One agent policy**: `AGENTS.md`. **One document map**: this index. `SOUL.md` is separate doctrine, not a second mission. `docs/NEXT_GOAL_24H_FILTERED_PAPER_RESEARCH.md` is supporting acceptance criteria, not a launcher. Earlier dashboard and H5–H8 prompts are HISTORICAL and must never override these files. Agents must not discover a different master prompt by searching filenames.
+
 ## Root
 
 | File | Role | Status |
@@ -34,23 +38,13 @@ Read order and precedence are defined in the `AGENTS.md` header. Summary:
 | `CONTRIBUTING.md` | Human-facing mirror of the operating rules | LIVING |
 | `GOAL_PLAN_PROMPT.md` | Owner-authorized D2→PR2→filter→API→24h→research one-package session mission; no funded trading or agent push | LIVING OPERATOR WORKFLOW (updated 2026-11-07; baseline `3143999`) |
 | `SESSION_LAUNCHER_PROMPT.md` | Root local agent launcher loading the current goal plan, one bounded package, local commit only | LIVING OPERATOR WORKFLOW (updated 2026-11-07) |
-| `SNIPERFUSION_DASHBOARD_ARCHITECTURE_PLAN.md` | Local read-only dashboard architecture, canonical producer-only telemetry and financial correctness | POINT-IN-TIME DESIGN (baseline `fb1a762`) |
-| `SNIPERFUSION_DASHBOARD_GOAL_PLAN_PROMPT.md` | DASH-00…DASH-07 independent UI/full-stack implementation mission; not the trading goal plan | LIVING DASHBOARD WORKFLOW (baseline `fb1a762`) |
-| `SNIPERFUSION_DASHBOARD_SESSION_LAUNCHER.md` | One-session local dashboard agent entrypoint; bounded milestone and evidence handoff | LIVING DASHBOARD WORKFLOW (baseline `fb1a762`) |
-| `DASHBOARD_EXECUTE_PROMPT.md` | Copy-ready dashboard engineering agent start prompt; delegates to dashboard launcher/master plan | LIVING DASHBOARD WORKFLOW (baseline `fb1a762`) |
-
-## docs/dashboard/ — Control Tower engineering
-
-| File | Role | Status |
-|---|---|---|
-| `TOOLING_AUDIT.md` | DASH-00 operator-provided tooling installation, pin and verification receipt; local branch artifacts are not yet published to main | POINT-IN-TIME RECEIPT COPY (2026-11-05; verify against local canonical file) |
 
 ## docs/ — engineering and governance
 
 | File | Role | Status |
 |---|---|---|
 | `PROJECT_STATUS.md` | Living state ledger: milestone table, session records, blockers | LIVING |
-| `AGENT_OPERATIONS.md` | Agent Operating System: roles, three loops, safe commands, G0 protocol, handoff protocol | LIVING |
+| `AGENT_OPERATIONS.md` | Historical agent-operations detail and safe commands; may carry stale G0 status. Current `AGENTS.md` supersedes routing | POINT-IN-TIME REFERENCE |
 | `ARCHITECTURE.md` | Crates, event architecture, priority bus, tx lifecycle, RiskAuthorization, non-goals | LIVING — needs refresh after WA/Harness² landings |
 | `CAPABILITY_MATRIX.md` | Chainstack parity rows C1–C24 + per-upstream verdicts | LIVING (per milestone) |
 | `THREAT_MODEL.md` | Adversaries A1–A5, threats T1–T16, safety invariants, test mapping | LIVING |
@@ -59,7 +53,7 @@ Read order and precedence are defined in the `AGENTS.md` header. Summary:
 | `SOLANA_COMPATIBILITY.md` | Solana SDK generation spike evidence (M0) | POINT-IN-TIME |
 | `UPSTREAM_MANIFEST.md` | Pinned upstream repos, licenses, attribution, amendments | LIVING (update on any pin change) |
 | `UPSTREAM_INTEGRATION_MATRIX.md` | What each upstream contributes and how | LIVING |
-| `NEXT_GOAL_H8_G0.md` | Earlier G0/H8 milestone plan; G0 launch capture gate now resolved by D1a | POINT-IN-TIME (historical baseline) |
+| `NEXT_GOAL_H8_G0.md` | Superseded G0/H8 mission; keep PR-2 technical detail only | HISTORICAL — NOT A CURRENT SESSION PLAN |
 | `NEXT_GOAL_24H_FILTERED_PAPER_RESEARCH.md` | D2/PR2-first dependency ladder for universal filtering, API reach, deterministic 24h paper, Harness² and H8 evaluation | POINT-IN-TIME OWNER CONTRACT (2026-11-07; baseline `3143999`) |
 | `PROFIT_FIRST_GOAL_PLAN.md` | H8 / P&L V2 goal plan | POINT-IN-TIME plan |
 | `WALLET_ALPHA_GOAL_PLAN.md` | Wallet Alpha implementation contract | POINT-IN-TIME plan |
@@ -85,11 +79,15 @@ Read order and precedence are defined in the `AGENTS.md` header. Summary:
 
 ## docs/history/ — archived superseded documents
 
-Superseded root-level documents moved out of the tree top on 2026-11-05. Content unchanged; status marked in-file.
+Superseded root-level documents are preserved here for provenance. Dashboard workflow files moved from root on 2026-11-07 with an added archival banner; original instructions below each banner are **historical, not to be executed**. Git history preserves their prior exact bytes.
 
 | File | Role | Status |
 |---|---|---|
 | `AGENT_MASTER_PROMPT.md` | Original master build prompt (2026-11-02) | HISTORICAL — superseded where conflicting |
+| `dashboard/SNIPERFUSION_DASHBOARD_ARCHITECTURE_PLAN.md` | Historical Control Tower master design; current living dashboard contracts in `docs/dashboard/` | HISTORICAL DESIGN (archived 2026-11-07) |
+| `dashboard/SNIPERFUSION_DASHBOARD_GOAL_PLAN_PROMPT.md` | Superseded standalone dashboard project mission, DASH-00..07 | HISTORICAL, NON-EXECUTABLE |
+| `dashboard/SNIPERFUSION_DASHBOARD_SESSION_LAUNCHER.md` | Superseded dashboard-only launcher | HISTORICAL, NON-EXECUTABLE |
+| `dashboard/DASHBOARD_EXECUTE_PROMPT.md` | Superseded copy-paste dashboard agent prompt | HISTORICAL, NON-EXECUTABLE |
 
 ## docs/research/ — dated research memos
 
@@ -127,11 +125,11 @@ Numbers 0004–0011 are unused (reserved by an interim plan, never written). Do 
 | `RAW_CAPTURE_V0.md` | Raw capture V0 spec | POINT-IN-TIME |
 | `HARNESS_WORKFLOW.md` | Harness objective and workflow (V0-era) | POINT-IN-TIME |
 | `AI_STRATEGY_HARNESS_V1.md` | Harness architecture V1 | POINT-IN-TIME |
-| `H5_H8_GOAL_PLAN.md` | H5–H8 plan + acceptance matrix | POINT-IN-TIME |
-| `MASTER_AGENT_MISSION_H5_H8.md` | Mission document for H5–H8 | POINT-IN-TIME |
+| `H5_H8_GOAL_PLAN.md` | Legacy H5–H8 acceptance matrix, not a current agent entrypoint | HISTORICAL REFERENCE |
+| `MASTER_AGENT_MISSION_H5_H8.md` | Legacy H5–H8 mission, cannot override root plan | HISTORICAL, NON-EXECUTABLE |
 | `AGENT_NEXT_GOAL.md` | Earlier next-goal brief | HISTORICAL |
 | `NEXT_AGENT_RESEARCH_PROMPT.md` | Earlier master research prompt | HISTORICAL |
-| `COPY_PASTE_AGENT_LAUNCH_PROMPT.md` | Mission-director launch prompt | POINT-IN-TIME |
+| `COPY_PASTE_AGENT_LAUNCH_PROMPT.md` | Legacy H5–H8 copy-paste prompt; do not execute as current mission | HISTORICAL, NON-EXECUTABLE |
 | `PROFIT_FIRST_AGENT_MISSION.md` | Profit-first mission | POINT-IN-TIME |
 | `WALLET_ALPHA_AGENT_MISSION.md` | Wallet Alpha mission | POINT-IN-TIME |
 | `MEMECOIN_RESEARCH_QUESTIONS.md` | Research question bank | REFERENCE (living question bank) |
@@ -181,7 +179,7 @@ Routed per `AGENTS.md` §8; validated by `python3 harness/agentctl.py lint-skill
 ## Anti-sprawl rules
 
 1. **One job per document.** If an existing doc already does the job, extend it instead of adding a near-duplicate.
-2. **No new master prompts by default.** The root `GOAL_PLAN_PROMPT.md` + `SESSION_LAUNCHER_PROMPT.md` pair is an explicit owner-approved exception (2026-11-05), solely a bounded session workflow. It never supersedes SOUL/AGENTS safety or living GOALS. Further missions use dated goal plans under `docs/`, not additional master prompts.
+2. **No additional active master prompts.** The root `GOAL_PLAN_PROMPT.md` + `SESSION_LAUNCHER_PROMPT.md` pair is an explicit owner-approved exception (2026-11-05), solely a bounded session workflow. It never supersedes SOUL/AGENTS safety or living GOALS. Further missions use dated goal plans under `docs/`, not additional master prompts.
 3. **Point-in-time docs carry a baseline SHA and status header** and are never silently rewritten.
 4. **Every new doc lands in this index in the same PR.** A doc missing from this index is a bug.
 5. **Deprecation is explicit.** Add `Status: HISTORICAL (superseded by <file>)` under the title; do not delete history.

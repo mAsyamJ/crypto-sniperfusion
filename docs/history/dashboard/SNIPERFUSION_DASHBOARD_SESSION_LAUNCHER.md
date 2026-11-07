@@ -1,5 +1,8 @@
 # SNIPERFUSION DASHBOARD — LOCAL SESSION LAUNCHER
 
+> **HISTORICAL / NOT AN ACTIVE SESSION — archived 2026-11-07.** This dashboard prompt is preserved for provenance after DASH-00..03 merged. Do NOT execute its launch instructions or treat its old milestones as current. Canonical project entrypoint: `SESSION_LAUNCHER_PROMPT.md` → `GOAL_PLAN_PROMPT.md`; current dashboard contracts: `docs/dashboard/REQUIREMENTS.md` and `docs/dashboard/ARCHITECTURE.md`. Original content follows unaltered.
+
+
 You are working in the local `mAsyamJ/crypto-sniperfusion` checkout.
 
 **Owner-approved goal:** build a local, beautiful, accurate SniperFusion Control Tower for bot status, PnL/calendar, portfolio, execution, chain health, opportunity intelligence, wallet alpha, strategy evaluation and research harness. You are not authorized to run funded trades, access private keys, change live gates, purchase infrastructure, push commits or override the existing root trading mission.

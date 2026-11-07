@@ -1,6 +1,6 @@
 # Goals — the SniperFusion goal ladder
 
-**Version:** 1.0 (2026-11-05) · **Status:** ACTIVE (LIVING) · **Owner:** repository owner · **Compiled from:** `SOUL.md`, `AGENTS.md`, `docs/PROJECT_STATUS.md`, `docs/NEXT_GOAL_H8_G0.md`, `docs/PROFIT_FIRST_GOAL_PLAN.md`, `docs/WALLET_ALPHA_GOAL_PLAN.md` at `f51ab4f`.
+**Version:** 1.1 (2026-11-07) · **Status:** SOLE ACTIVE MILESTONE CHECKLIST (LIVING) · **Owner:** repository owner · **Current driver:** root `GOAL_PLAN_PROMPT.md` + read-only acceptance contract `docs/NEXT_GOAL_24H_FILTERED_PAPER_RESEARCH.md`. Earlier G0/Profit-First/Wallet Alpha plans remain point-in-time references and do not override this ladder.
 
 **Update rule:** this file tracks *what remains, in dependency order* — it is the checklist view, not the state authority. Strategy states → `docs/STRATEGY_REGISTRY.md`; milestone history + session records → `docs/PROJECT_STATUS.md`; doctrine (winning, laws, gates) → `SOUL.md`. Flip a box only when the owning system says so (H8 registry verdict, gate passage, merged PR with evidence receipt) — never from memory or chat.
 

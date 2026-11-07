@@ -4,7 +4,7 @@ Date: 2026-11-05. Status: accepted.
 
 ## Context
 
-The owner's dashboard mission (root files `SNIPERFUSION_DASHBOARD_*.md`, `DASHBOARD_EXECUTE_PROMPT.md`, published via PR #12) requires a local, trustworthy observability surface over SniperFusion's verified outputs. Verified ground truth at HEAD `de1a8be` (audit receipt `docs/evidence/DASH-01-20261105.md`): the corpus on disk is hash-sealed write-once artifacts (`run.json` PnL V2 receipts, G0 manifests, snf-harness manifests, H8 hash-chained registry, Harness² summaries) with **no daemon, no heartbeat, no NAV series, and no wall-clock timestamps on research trade records**. The owner override forbids any dashboard-side market/accounting data path.
+The owner's historical dashboard mission (original root prompts, archived under `docs/history/dashboard/` on 2026-11-07; published via PR #12) requires a local, trustworthy observability surface over SniperFusion's verified outputs. Verified ground truth at HEAD `de1a8be` (audit receipt `docs/evidence/DASH-01-20261105.md`): the corpus on disk is hash-sealed write-once artifacts (`run.json` PnL V2 receipts, G0 manifests, snf-harness manifests, H8 hash-chained registry, Harness² summaries) with **no daemon, no heartbeat, no NAV series, and no wall-clock timestamps on research trade records**. The owner override forbids any dashboard-side market/accounting data path.
 
 ## Decision
 

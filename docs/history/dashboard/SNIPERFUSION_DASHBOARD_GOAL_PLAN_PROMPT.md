@@ -1,5 +1,8 @@
 # MASTER GOAL PLAN PROMPT — SNIPERFUSION LOCAL DASHBOARD
 
+> **HISTORICAL / NOT AN ACTIVE SESSION — archived 2026-11-07.** This dashboard prompt is preserved for provenance after DASH-00..03 merged. Do NOT execute its launch instructions or treat its old milestones as current. Canonical project entrypoint: `SESSION_LAUNCHER_PROMPT.md` → `GOAL_PLAN_PROMPT.md`; current dashboard contracts: `docs/dashboard/REQUIREMENTS.md` and `docs/dashboard/ARCHITECTURE.md`. Original content follows unaltered.
+
+
 > Copy this entire prompt into your LOCAL coding agent running at the `crypto-sniperfusion` repository root. It is a **new bounded, owner-requested dashboard engineering workstream**, not an amendment to the existing root `GOAL_PLAN_PROMPT.md`, `SESSION_LAUNCHER_PROMPT.md`, or `SOUL.md`.
 >
 > Supporting specification: `SNIPERFUSION_DASHBOARD_ARCHITECTURE_PLAN.md` (provided separately). If unavailable, use the embedded requirements in this prompt; do not invent repository files. **This is permission to make a local design/build branch and local commits, NOT permission to push, purchase services, broadcast transactions, or touch funded keys.**

@@ -2,11 +2,11 @@
 
 **Solana-first, chain-agnostic long-term design.** SniperFusion is an actively developed Rust protocol/replay/strategy research project. It is **not** a demonstrated profitable sniper or an agent-controlled funded trading service.
 
-> **Checked progress: PF1 + H8 registry (2026-11-04).** The Rust P&L V2 engine and double-entry oracle are tested; G0 collected short block-verified COMPLETE windows but captured zero successful launches; on-chain fee-config observations are recorded. H8 preregistration machinery exists, not a proven alpha system. **S00 NO_TRADE beats every tested trading policy on synthetic data**; seven-day read-only forward shadow and real decision-time reserve snapshots remain open. See [PROJECT_STATUS](docs/PROJECT_STATUS.md), [PF1 evidence](docs/evidence/PF1.md), [G0/H8 evidence](docs/evidence/G0-H8-session.md), and actual HEAD.
+> **Verified state at D1a (2026-11-06):** identical 3,001-slot, block-verified COMPLETE mainnet read-only cohort re-captured with the fixed `create_v2` decoder: **232 launches** (181 SOL-quoted, 51 alternative-quoted), not zero. Source: [D1a receipt](docs/evidence/D1A-TIME-OF-DAY-CREATE-V2-20261106.md). Trading on this cohort is NOT yet priced/evaluated; D2 as-of reserves/fees → PR2 real-cohort historical paper execution remain first. H8 and PF1 tooling exist, but **S00 NO_TRADE remains champion (`EDGE_NOT_DEMONSTRATED`)**. No proven profitable strategy, funded mainnet trading or completed ≥7-day prospective shadow.
 
 ## Start here — coding agents
 
-1. Read [AGENTS.md](AGENTS.md), [Agent Operating System](docs/AGENT_OPERATIONS.md), [next engineering goals](docs/NEXT_GOAL_H8_G0.md), then the [documentation map](docs/DOC_INDEX.md) and [glossary](docs/GLOSSARY.md).
+1. **One active agent entrypoint:** read [SOUL.md](SOUL.md) → [AGENTS.md](AGENTS.md) → [SESSION_LAUNCHER_PROMPT.md](SESSION_LAUNCHER_PROMPT.md) → [GOAL_PLAN_PROMPT.md](GOAL_PLAN_PROMPT.md) → [docs/GOALS.md](docs/GOALS.md) and the [current acceptance contract](docs/NEXT_GOAL_24H_FILTERED_PAPER_RESEARCH.md). Use [DOC_INDEX](docs/DOC_INDEX.md) for supporting specs and history. Old dashboard and H5–H8 prompts are HISTORICAL, not alternate instructions.
 2. Inspect specialist skills under [.agents/skills](.agents/skills); these are task-specific markdown playbooks, not installed external powers.
 3. Run non-mutating self-inspection and optional synthetic demonstration:
 
@@ -49,7 +49,7 @@ The demo is **synthetic only**, non-promotable and uses no remote RPC or key. `-
 
 ## Next objective
 
-**Unlock G0 data first:** provider capability probe → bounded, block-verified `COMPLETE` creation cohort → actual fee/reserve snapshots → Engine A/B comparison → bounded H8 research council → genuinely prospective read-only shadow. See [H8/G0 plan](docs/NEXT_GOAL_H8_G0.md), [upstream integration map](docs/UPSTREAM_INTEGRATION_MATRIX.md), and the full [goal ladder](docs/GOALS.md).
+**G0 launch capture is COMPLETE.** The canonical next goal is **D2A/D2B** actual point-in-time reserves and fees → **PR2** Engine A/B + independent PF1 net liquidation accounting on the 232 real launches → universal G1–G7 filters → vetted additional on-chain/API token reach → no-AI 24h paper daemon → preregistered strategy/Harness² evaluation → ≥7-day prospective shadow. See [current goals](docs/GOALS.md) and [one active goal plan](GOAL_PLAN_PROMPT.md). Prior G0 plans are retained for historical context only.
 
 No successful synthetic experiment, testnet faucet trade, or Surfpool fork is evidence of mainnet profitability. Mainnet operations remain read-only; no automated funding or signing is authorized.
 
@@ -71,11 +71,11 @@ If your existing operator-owned `SNF_MAINNET_RPC_URL` is already set in your she
 
 ## Profit-first H8 and P&L evaluation
 
-Business objective: **prove repeatable, risk-constrained net trading profit after all fees and realistic execution**, not maximize trade count or win rate. Current H7 synthetic evidence remains `EDGE_NOT_DEMONSTRATED` and S00 NO_TRADE dominates. Read [Profit-First Goal Plan](docs/PROFIT_FIRST_GOAL_PLAN.md) and [Profit-First Agent Mission](harness/docs/PROFIT_FIRST_AGENT_MISSION.md); dispatch `.agents/skills/sniper-pnl-architect/SKILL.md` for every P&L, strategy profitability, or finance report task. The mission is a plan, not implemented P&L V2 code. Retain mainnet read-only and prohibit independent funded agents.
+Business objective: **prove repeatable, risk-constrained net trading profit after all fees and realistic execution**, not maximize trade count or win rate. Current H7 synthetic evidence remains `EDGE_NOT_DEMONSTRATED` and S00 NO_TRADE dominates. For current work invoke the root [goal plan](GOAL_PLAN_PROMPT.md); [Profit-First Plan](docs/PROFIT_FIRST_GOAL_PLAN.md) and [Profit-First Agent Mission](harness/docs/PROFIT_FIRST_AGENT_MISSION.md) remain historical financial-design references. Dispatch `.agents/skills/sniper-pnl-architect/SKILL.md` for P&L review; PF1 V2 accounting code already exists, but real-cohort paper P&L is not yet established. Retain mainnet read-only and prohibit independent funded agents.
 
-## Wallet Alpha / source integration (WA0 research branch)
+## Wallet Alpha — existing specialized research (not a second current mission)
 
-The next bounded workstream is [Wallet Alpha Goal Plan](docs/WALLET_ALPHA_GOAL_PLAN.md), [verified upstream audit](docs/WALLET_ALPHA_UPSTREAM_AUDIT.md), and [short agent mission](harness/docs/WALLET_ALPHA_AGENT_MISSION.md). Specialist playbook: `.agents/skills/wallet-alpha-solana-tracker/SKILL.md`.
+[Wallet Alpha Goal Plan](docs/WALLET_ALPHA_GOAL_PLAN.md), [upstream audit](docs/WALLET_ALPHA_UPSTREAM_AUDIT.md) and [historical agent mission](harness/docs/WALLET_ALPHA_AGENT_MISSION.md) are specialized references. W01 naive follow was rejected; S14 provenance-filtered follow remains hypothesis only. Route current work through the root session launcher and goal plan; use `.agents/skills/wallet-alpha-solana-tracker/SKILL.md` for this research family.
 
 `python3 harness/wallet_alpha_lab.py --events harness/fixtures/wallet_alpha_synthetic.jsonl --min-trades 2` runs a strictly offline, **synthetic** follower-copyability negative control. It is NOT a production wallet tracker, live shadow bot or shared-capital P&L report; it does not find or follow mainnet wallets. P&L V2 in Rust remains the authoritative portfolio accountant for future WA1–WA3 integration.
 

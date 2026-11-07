@@ -1,6 +1,6 @@
 # DASH-00 — Tooling Audit (skill provisioning receipt)
 
-- **Workstream:** SniperFusion Control Tower dashboard (master plan: `SNIPERFUSION_DASHBOARD_GOAL_PLAN_PROMPT.md` Phase 0)
+- **Workstream:** SniperFusion Control Tower dashboard (historical master plan: `docs/history/dashboard/SNIPERFUSION_DASHBOARD_GOAL_PLAN_PROMPT.md` Phase 0; no longer an active launcher)
 - **Session date (UTC):** 2026-11-05
 - **Base:** `main` @ `54bf3d28d56c2c0c20b00a2e7deda3081a41eee0` (merge containing `origin/main` @ `36f7b019`, the PR #12 dashboard mission files)
 - **Working branch:** `feat/dashboard-control-tower`

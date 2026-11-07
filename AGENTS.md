@@ -2,6 +2,8 @@
 
 **Read order for every session:** `SOUL.md` (doctrine — why we exist and what winning is) → this file (operations — how we work) → `docs/PROJECT_STATUS.md` (state — what exists today) → `docs/DOC_INDEX.md` (map — where everything lives). The original build spec survives at `docs/history/AGENT_MASTER_PROMPT.md` (HISTORICAL — superseded where conflicting).
 
+> **ONE ACTIVE ENGINEERING MISSION (2026-11-07).** `SESSION_LAUNCHER_PROMPT.md` launches only `GOAL_PLAN_PROMPT.md`; `docs/GOALS.md` is the single living milestone checklist. `docs/NEXT_GOAL_24H_FILTERED_PAPER_RESEARCH.md` is a **supporting acceptance contract**, not another launcher. The separately authored dashboard launch prompts are preserved under `docs/history/dashboard/` and MUST NOT run as an alternative session. Legacy `harness/docs/*MISSION*`, H5–H8 and G0 plans are point-in-time technical references only. The one active documentation map is `docs/DOC_INDEX.md`. Preserve receipts unchanged.
+
 **Precedence:** direct operator instructions > §2 safety restrictions in this file > `SOUL.md` doctrine > remaining sections of this file > `docs/AGENT_OPERATIONS.md` > specialist skill playbooks (`.agents/skills/`) > archived milestone prompts.
 
 This file binds every agent/session working here. It is organized by function, not by date; history lives in `docs/PROJECT_STATUS.md` and `docs/evidence/`.

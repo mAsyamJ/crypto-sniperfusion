@@ -1,6 +1,6 @@
 # Control Tower Architecture (implementation design)
 
-**Status:** LIVING (DASH-01 baseline) · **Date:** 2026-11-05 · **Implements:** `docs/dashboard/REQUIREMENTS.md` under the invariant of `SNIPERFUSION_DASHBOARD_ARCHITECTURE_PLAN.md` §1A. Decision record: `docs/ADRS/0013-dashboard-read-only-mirror.md`.
+**Status:** LIVING (DASH-01 baseline) · **Date:** 2026-11-05 · **Implements:** `docs/dashboard/REQUIREMENTS.md` under the archived design reference `docs/history/dashboard/SNIPERFUSION_DASHBOARD_ARCHITECTURE_PLAN.md` §1A; current executed contracts in this file and `docs/dashboard/REQUIREMENTS.md` take precedence. Decision record: `docs/ADRS/0013-dashboard-read-only-mirror.md`.
 
 ## 1. Pipeline
 

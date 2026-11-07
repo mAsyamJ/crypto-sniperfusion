@@ -87,7 +87,7 @@ def doctor():
         "mainnet_broadcast_possible_from_this_tool": False,
         "real_cohort_coverage": "NOT_VERIFIED_BY_DOCTOR",
         "alpha": "NOT_DEMONSTRATED",
-        "next": "docs/NEXT_GOAL_H8_G0.md",
+        "next": "docs/GOALS.md",
     }
     print(json.dumps(report, indent=2))
     return 0 if not missing else 2
@@ -102,11 +102,12 @@ def commands():
         "rust_fmt": "CARGO_BUILD_JOBS=2 cargo fmt --all -- --check",
         "rust_test": "CARGO_BUILD_JOBS=2 cargo test --workspace --locked",
         "mission_plan_STALE": "python3 harness/agent_mission.py plan",
+        "current_session_launcher": "cat SESSION_LAUNCHER_PROMPT.md",
         "synthetic_demo": "python3 harness/agentctl.py research-demo --cycles 3 --out harness/runs/agent-demo-unique.json",
         "existing_harness_help": "python3 harness/snf-harness --help",
         "collector_help_READ_ONLY": "python3 harness/launch_cohort_capture.py --help",
         "rpc_capability_READ_ONLY": "python3 harness/rpc_capability_probe.py --out harness/runs/rpc-sample-unique.json",
-        "next_goal": "cat docs/NEXT_GOAL_H8_G0.md",
+        "next_goal": "cat docs/GOALS.md && cat GOAL_PLAN_PROMPT.md",
     }
     print(json.dumps(rows, indent=2))
     return 0

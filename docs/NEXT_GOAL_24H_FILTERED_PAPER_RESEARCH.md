@@ -1,5 +1,7 @@
 # Next Goal — Universal Filtering, Multi-Source Coverage, 24/7 Deterministic Paper Profitability
 
+**Role:** Supporting engineering acceptance specification only; NOT an alternate `GOAL_PLAN_PROMPT.md` and not a second agent entrypoint. `docs/GOALS.md` owns current milestone state; `SESSION_LAUNCHER_PROMPT.md` is the sole entrypoint.
+
 **Date:** 2026-11-07 · **Status:** POINT-IN-TIME IMPLEMENTATION CONTRACT · **Reviewed baseline:** main at 314399959ab5f7573a25df77eed25991d9cae907.  
 **Research:** `docs/research/2026-11-07-multisource-token-reach-and-filtering.md`. **Execution mission:** `GOAL_PLAN_PROMPT.md` and `SESSION_LAUNCHER_PROMPT.md`.  
 **Security authority:** `AGENTS.md` §2, `SOUL.md` and ADR-0002/0012/0013. All mainnet observations are READ-ONLY; all trades here mean historical or prospective PAPER trades. The owner has not authorized funded orders or mainnet broadcasts.

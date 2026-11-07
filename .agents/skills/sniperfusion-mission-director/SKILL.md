@@ -1,14 +1,14 @@
 ---
 name: sniperfusion-mission-director
-description: Execute the SniperFusion H5-H8 gated development/research mission, assign protocol/quant/critic roles, preserve immutable evidence, and stop before any live-funded or unauthorized Devnet transactions.
+description: Execute the current SniperFusion bounded filter-first D2/PR2 development mission; route specialists, preserve immutable evidence, and prohibit agent-controlled funded trading.
 ---
 # SniperFusion Mission Director
 
 Always read:
-1. `AGENTS.md` and `docs/history/AGENT_MASTER_PROMPT.md`.
-2. `harness/docs/MASTER_AGENT_MISSION_H5_H8.md` and `harness/docs/H5_H8_GOAL_PLAN.md`.
-3. `docs/PROJECT_STATUS.md`, `docs/DEVNET_EXECUTION_PILOT.md`, `harness/docs/RESEARCH_CYCLE_V1.md`.
-4. Relevant exact Rust implementation and tests, official Pump.fun docs and confirmed deployment information.
+1. `SOUL.md` and `AGENTS.md` (especially §2, §14 and §15).
+2. `SESSION_LAUNCHER_PROMPT.md`, `GOAL_PLAN_PROMPT.md` and `docs/GOALS.md` — the **only active session mission**.
+3. `docs/PROJECT_STATUS.md`, `docs/NEXT_GOAL_24H_FILTERED_PAPER_RESEARCH.md` and dated multi-source research; inspect evidence at current HEAD.
+4. Relevant exact Rust implementation, tests, official program docs and current specialist skills. Historical H5–H8 mission docs are references only.
 
 ## Objective
 Act as a principal engineering conductor of a deterministic Solana memecoin research program. Search for credible after-cost OOS edge while protecting investors' capital and rejecting bad evidence. **Do not promise a 100% win rate** or select a strategy on headline paper ROI.
@@ -24,7 +24,10 @@ Act as a principal engineering conductor of a deterministic Solana memecoin rese
 - devnet-protocol-pilot: read-only Devnet preflight; operator-controlled transaction smoke only.
 - strategy-experiment-orchestrator: finite preregistration and negative controls.
 
-## Runnable safe loop
+## Legacy synthetic compatibility loop (NOT the active agent launcher)
+
+The code below is useful only to regression-test an old synthetic mission script; **do not** treat its `plan` output as a current engineering goal. For work follow `SESSION_LAUNCHER_PROMPT.md` instead.
+
 ```bash
 python3 harness/agent_mission.py plan
 python3 harness/agent_mission.py run \
@@ -37,6 +40,6 @@ This does not actually call LLMs; it runs a fixed Python test suite with scrubbe
 ## Decision policy
 Stop on any CI failure, unknown signing state, secret leak, non-Devnet genesis, uncalibrated fee/exit assumptions, source gaps used as certainty or future label leakage. The **pilot never appears as an option in the mission controller** and cannot be triggered automatically.
 
-Progress only by small test-backed PRs. Every report distinguishes VERIFIED CODE / SYNTHETIC / FORK / DEVNET CONFIRMED / MAINNET READ ONLY / BLOCKED. H5 mechanics precedes H6 sources; H6 data quality precedes H7 real alpha; H7 external evidence precedes H8 genuine paper promotion.
+Progress only through current D2A → D2B → PR2 → F0/F1 → API/venues → OPS24 → S11EX/H2SAFE/SHADOW7 packages, each validated and separately committed locally with receipts. No agent push. Every report distinguishes VERIFIED CODE / SYNTHETIC / FORK / MAINNET READ ONLY / HISTORICAL PAPER / PROSPECTIVE PAPER / BLOCKED; a historically replayed cohort is not forward shadow.
 
 No mainnet broadcasts, no agent access to test or production private keys, no endless loops, and no self-granted live authorizations.

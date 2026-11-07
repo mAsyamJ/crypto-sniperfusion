@@ -1,5 +1,8 @@
 # SniperFusion Dashboard — Architecture & Delivery Plan
 
+> **HISTORICAL / NOT AN ACTIVE SESSION — archived 2026-11-07.** This design is preserved for provenance after DASH-00..03 merged. Do NOT execute its launch instructions or treat its old milestones as current. Canonical project entrypoint: `SESSION_LAUNCHER_PROMPT.md` → `GOAL_PLAN_PROMPT.md`; current dashboard contracts: `docs/dashboard/REQUIREMENTS.md` and `docs/dashboard/ARCHITECTURE.md`. Original content follows unaltered.
+
+
 **Document type:** point-in-time engineering design, not a trading authorization.
 **Review baseline:** `mAsyamJ/crypto-sniperfusion`, `main@fb1a762d344e78fdaaf8e5a4f19ec046134fd506` (2026-11-05). Re-check HEAD before implementation.
 **Scope:** local, read-only trading intelligence and operations dashboard; paper/research/fork/chain-observation truth with explicit evidence labels.

@@ -1,7 +1,7 @@
 # Control Tower Requirements & Provenance Matrix
 
 **Status:** LIVING (DASH-01 baseline; extends per milestone) · **Date:** 2026-11-05 · **Branch:** `feat/dashboard-control-tower`
-**Authority order:** `SOUL.md` > `AGENTS.md` §2 safety > `docs/PROJECT_STATUS.md`/receipts > this file. The owner override in `SNIPERFUSION_DASHBOARD_GOAL_PLAN_PROMPT.md` and invariant §1A of `SNIPERFUSION_DASHBOARD_ARCHITECTURE_PLAN.md` bind everything below.
+**Authority order:** `SOUL.md` > `AGENTS.md` §2 safety > `docs/PROJECT_STATUS.md`/receipts > this file. The original dashboard scope is preserved under `docs/history/dashboard/SNIPERFUSION_DASHBOARD_GOAL_PLAN_PROMPT.md` and design invariant §1A of `docs/history/dashboard/SNIPERFUSION_DASHBOARD_ARCHITECTURE_PLAN.md`, but those archived prompts are **not executable entrypoints**. Current dashboard truth and security obligations are governed by this living requirements file, ADR-0013 and the sole root project goal/launcher.
 
 This document records **verified producer truth** (every claim audited at HEAD `de1a8be` with file:line evidence in `docs/evidence/DASH-01-20261105.md` §2) and turns it into module requirements, an API contract, and financial contracts. It is the input to `ARCHITECTURE.md`, `DESIGN.md`, and `TEST_PLAN.md`.
 
