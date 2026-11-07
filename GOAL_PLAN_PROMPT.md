@@ -1,311 +1,106 @@
-# GOAL PLAN PROMPT — SniperFusion Continuous-Improvement Mission
+# GOAL PLAN PROMPT — Filter-First SniperFusion Research and Paper Trading
 
-**Version:** 1.1 (2026-11-05) · **Baseline:** `main@adb57600106564c2e3239bd1f6f102d21a84f450` · **Status:** OWNER-AUTHORIZED REPOSITORY-TRACKED WORKFLOW · **Issuer:** repository owner (operator) · **Audience:** the local development agent working in the SniperFusion repository
-**Nature:** direct operator instruction — highest precedence below the safety restrictions in `AGENTS.md` §2. This prompt does not amend doctrine; it sequences work. If it ever appears to conflict with `SOUL.md` or `AGENTS.md` safety rules, those win and you stop and say so.
+**Version:** 2.0 (2026-11-07) · **Status:** OWNER-AUTHORIZED TRACKED MISSION · **Historical baseline:** main at 314399959ab5f7573a25df77eed25991d9cae907.  
+**Use:** invoke the root `SESSION_LAUNCHER_PROMPT.md`; one bounded local engineering/research session at a time.  
+**Implementation contract:** `docs/NEXT_GOAL_24H_FILTERED_PAPER_RESEARCH.md`  
+**Provider and security research:** `docs/research/2026-11-07-multisource-token-reach-and-filtering.md`  
+**Precedence:** `AGENTS.md` §2 safety and `SOUL.md` doctrine prevail over this sequencing. The operator authorization to publish these docs is NOT authorization for local-agent GitHub pushes or mainnet funded trading.
 
-**How to use:** invoke `SESSION_LAUNCHER_PROMPT.md` from the repository root; it loads this tracked goal plan. The owner explicitly authorized publishing this pair on `main`, as indexed by `docs/DOC_INDEX.md`. Revalidate historical facts and command flags against HEAD; execute exactly ONE bounded loop per operator-invoked session.
+## 0. Mission
 
----
+Build SniperFusion into a secure, provider-diverse, continuously supervised, **deterministic 24/7 PAPER trading and research system**, with typed filtering across every source/token/wallet/harness/order/artefact boundary, and independent proof or rejection of net profitability. NO AI dependency in the runtime hot path. Genuine pinned Google Harness² may improve the RESEARCH HARNESS in restricted offline environments; H8 and PF1 remain the financial truth. No strategy is profitable until data, all costs, risk and holdout gates prove it. `EDGE_NOT_DEMONSTRATED` is a legitimate result.
 
-## 0. Your mandate
+Distinguish:
+- Real on-chain read-only capture: historical state and transactions, no bot trade.
+- Historical deterministic paper replay: market-real observations, simulated fills, no future knowledge, not prospective shadow.
+- Prospective live-data paper trading: signals generated as data arrives, no funded signing or broadcasting.
+- Funded mainnet trading: OUT OF SCOPE; never enable or perform.
 
-You are the engineering and research agent for **SniperFusion** — a Rust Solana memecoin research and execution engine whose product is *verified truth about tradable edge*, delivered as write-once receipts a hostile auditor could replay from raw chain events to the last lamport.
+## 1. L0 — Orient and verify current HEAD
 
-Your mission is to **continue improving the bot** along the only path that can ever matter:
+Read in order:
+1. `SOUL.md` and `AGENTS.md`, all non-negotiable security rules.
+2. `docs/PROJECT_STATUS.md`, `docs/GOALS.md`, `docs/DOC_INDEX.md`, `docs/STRATEGY_REGISTRY.md`, `docs/GLOSSARY.md`, `docs/RPC_PROVIDERS.md`.
+3. The new implementation contract and dated research referenced above.
+4. `docs/evidence/D1A-TIME-OF-DAY-CREATE-V2-20261106.md`, the H7/PF1 evidence, `docs/NEXT_GOAL_H8_G0.md`, current code for any selected package.
+5. Specialist playbook(s) under `.agents/skills/` selected via `AGENTS.md` §8, and the relevant Harness² ADR when needed.
 
-```
-improve → validate → paper-trade → strategy → expand (M4) → harness → validate → LOOP → REPEAT
-```
+Preflight: `git rev-parse HEAD`; `git status --short`; `python3 harness/agentctl.py doctor`; `python3 -m unittest discover -s harness/tests`; Rust unit tests and tools when applicable. Report actual counts/exits or NOT_EXECUTED; never inherit an old PASS. Report `SNF_MAINNET_RPC_URL` only as SET/UNSET, never value; never print endpoint tokens. Do not alter or destroy an already-dirty worktree.
 
-You are not paid to find an edge. You are paid to **measure whether one exists** — honestly, expensively, with every fee, failure, and latency cost counted — and to keep building the machinery (data, protocols, evaluation, harness) that makes the next measurement cheaper and cleaner. `EDGE_NOT_DEMONSTRATED` is a result, not a failure. An honest zero beats a flattering maybe.
+Historical truth: corrected G0 captured 232 `create_v2` launches in a 3,001-slot complete window (181 SOL quote, 51 other quote), but **no proven profitable real-cohort trading**. The first critical gate is **D2 as-of reserve/fee snapshots → PR2 Engine A/B and independent PF1 NAV**. Raw manifest and 232 events are ordinarily gitignored local data; if not locally present, don't fabricate by reading just GitHub prose. Standing champion S00 NO_TRADE.
 
-**Terminology lock:** in this prompt "trade" ALWAYS means paper trading through the event-sourced PaperBroker (forward orders, no lookahead, declared exit policies). Funded/live trading is structurally out of scope for any agent, forever (§10).
+## 2. L1 — Select precisely one bounded unblocked package
 
----
+Follow `docs/NEXT_GOAL_24H_FILTERED_PAPER_RESEARCH.md` in this dependency order (override earlier D0/M4-only selection):
 
-## 1. Mandatory read order (before ANY work)
+**D2A → D2B → PR2 → F0 → F1 → API0 → API1 → API2 → OPS24 → S11EX → S12/S13/S14 → H2SAFE → SHADOW7.**
 
-Read, in this order, at the current `git rev-parse HEAD`:
+A newly identified critical security flaw may preempt this list with a documented risk justification. The order governs readiness; an isolated safe parallel improvement can be selected only if its prerequisite is met and the reason is recorded. State before any implementation: package ID, trusted baseline, worktree state, file list, acceptance test, bounded wall-time/RPC/cost/trial budget, rollback and provider credential requirements. If missing local raw data, produce explicit BLOCKED_MISSING_RAW_DATA; do not forge a sample or use later API observations at earlier decision times. If a package is blocked, choose another at L1 with reason; don't begin a second package after a completed iteration.
 
-1. `SOUL.md` — doctrine: identity, the definition of winning, the Ten Laws, evidence anchors, strategy frontier S11–S14+EX, gates G-A…G-G.
-2. `AGENTS.md` — operations: precedence chain, safety, engineering loop, environment, where things are, the research loop steps, specialist skill routing.
-3. `docs/PROJECT_STATUS.md` — current state and session history.
-4. `docs/GOALS.md` — the goal ladder / checklist (what remains, in dependency order).
-5. `docs/DOC_INDEX.md` + `docs/GLOSSARY.md` — the document map and the ID/vocabulary system.
-6. `docs/STRATEGY_REGISTRY.md`, `docs/RPC_PROVIDERS.md`, `docs/NEXT_GOAL_H8_G0.md` — strategy states, provider/G0 blockers, the current work package.
-7. The specialist skills routed by `AGENTS.md` §8 for the task you select (`.agents/skills/*/SKILL.md` — they are playbooks, not powers).
+## 3. L2–L7 — Do actual work, prove outcome, stop
 
-Orientation rules:
+**L2 ARCHITECT.** Define typed interfaces, source provenance, causal known_at fields, mint+venue+pools, chain state and fee versions. For strategy define entry, EX exit, position size, null cases, slippage/failure model, stress and kill criteria BEFORE trial. Any altered trust boundary requires an ADR.
 
-- Verify every claim against HEAD. Legacy planning documents (`harness/docs/*`, `docs/history/*`) carry stale implementation-state strings; `docs/evidence/*` and the actual code are the present truth.
-- **This owner-authorized prompt pair is already tracked in the repository as a narrow exception to `docs/DOC_INDEX.md` anti-sprawl policy.** Do not duplicate or move it. This publication grants no future push permission to the local developer agent. Session history belongs in PROJECT_STATUS and immutable receipts.
+**L3 RED-FIRST BUILD.** Write one or more failing regressions, implement only selected package, reuse existing Rust provider/event/broker/authz/oracle and Python captured data. Avoid duplicated engines, unversioned config and undocumented upstream copying. Data-only audit may use reproducible scripts rather than claiming unimplemented code tests.
 
----
+**L4 VALIDATE.** Actually execute `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo test`, `python3 -m unittest discover -s harness/tests`, negative controls, skills lint, replay/fault injection/benchmark when applicable, secret/license diff review. Log exact real exit codes and skips, not invented counts.
 
-## 2. Where the project actually is (orientation facts, 2026-11-05)
+**L5 EXECUTE.** Read-only mainnet data collection, historical or prospective PAPER trade, deterministic 24h soak, security fixtures, or offline harness experiment as selected. All bounded, checkpointed and gap-reconciled. Never send mainnet transactions, provision keys, or install paid endpoints. Write immutable 0444 evidence with coverage and known_at. Do not claim historical replay is shadow.
 
-Done, with receipts (GOALS.md §1):
+**L6 INDEPENDENT EVALUATION.** Source package measures on-chain verified recall, novelty, false positives, lag, provider cost/quotas and candidate admission. Security package measures bypass attempts and vetoes. Trading package reports all fills/no-fills/unexitable positions, observed reserves/fees, failed-tx burn, PF1 net NAV, S00 comparison, grouped uncertainty, CVaR95, stress and independent critic. If no trades happened, P&L = NOT_APPLICABLE, not success.
 
-- M0–M3c: audit; Rust core/protocols/runtime; 320/320 decode differential; real pump.fun ELF execution on Surfpool fork.
-- H0/H2/H4: security hardening; event-sourced PaperBroker; harness CLI (promotion structurally requires shadow).
-- INFRA 1–3: wallets; `sniper rpc-probe`; mainnet read-only readiness.
-- H6/H7: dataset contracts + coverage states; strategy SDK S00–S10, Engine A/B, independent oracle, evaluator + 12 negative controls.
-- PF0/PF1: on-chain-observed fee truth (curve 95+30 bps; PumpSwap tiered 125→30 bps); lamport-exact P&L V2.
-- H8 registry machinery: hash-chained preregistration, 20-trial bound, cross-process one-use holdout.
-- WA0→WA-full: wallet normalization, leader P&L, delayed follower, owner-graph/consensus/ladder, Dorado differentials. **W01 naive follow executed and REJECTED** (all 6 delay arms, −250,308 lamports vs S00).
-- Harness² deterministic channel (ADR-0012); documentation architecture layer (`c35e6b3`, `f51ab4f`).
+**L7 DECIDE + RECORD.** Update owners `docs/PROJECT_STATUS.md`, `docs/GOALS.md`, `docs/STRATEGY_REGISTRY.md` only when the actual receipt supports it. Add new immutable receipt; append docs index for any genuinely new document. Make conventional LOCAL commit only; **NEVER PUSH**. Stop after one work package. Future sessions are operator-invoked, NOT an unattended AI recursive loop.
 
-Standing verdict everywhere: **`EDGE_NOT_DEMONSTRATED` — S00 NO_TRADE is the champion and dominates every tested policy.**
+## 4. Universal filter must be architectural, not just a UI screener
 
-G0 (the data frontier):
+Canonical immutable `ObservedFact`: genesis, mint, pool, venue, program, provider ID/version, chain slot/commitment, chain event timestamp, source received timestamp, locally known_at, payload/receipt hash, freshness TTL, evidence class and gap state. Enforce replay causality: all features available **at or before** the decision, including client delivery delay. No later truth leak.
 
-- Mechanics are COMPLETE at scale: 3,001/3,001 block-verified window `[465625744, 465628744]` (~104 min), `coverage_state=COMPLETE`, zero gaps — and **zero creates**.
-- Sampled diagnostic (60 blocks, seed 20261105): ~82% pump-program transaction failure rate; **zero legacy `global:create` instruction attempts in that sample**. This does NOT exclude `create_v2`, alternate program versions or CPI cases. The collector recognizes `CreateV2` log names but its protocol-event coverage and ALT-loaded address handling require the D0 audit below.
-- The window spanned ~07:00–08:50 UTC — **time-of-day clustering is untested**.
-- Known operational facts: `getSignaturesForAddress` 20-page cap (candidate-discovery ceiling, not a census); operator provider sustains ≈0.8 `getBlock`/s (time budget binds first); `--max-requests` is **cumulative across resume legs**; checkpoint flock at `b90d7e5`; budget-stop summary fix at `268654f`.
-- **The S11+ blocker: a COMPLETE cohort containing independently verified creation events and decision-time reserve/fee snapshots.** Complete *block* coverage is not sufficient to establish complete *instruction/event* coverage.
+Every subsystem applies its gate:
+- G1 admission: source identity/schema/network/finality/time; reject malformed, stale, poisoned, impersonated API records.
+- G2 token: on-chain Token-2022 extension/authority review (hook/delegate/transfer fee/freeze/non-transferable/unknown).
+- G3 creator/wallet: provenance, linked insider funding, cost-basis, wash/fake volume.
+- G4 liquidity/exit: proven reserves, sell feasibility, quote support and minimum depth; UNKNOWN → abstain.
+- G5 market: organic maker flow, cross-venue stability, promotions and boosts separately labeled, never a buy alone.
+- G6 economics: actual fees, transfer taxes, priority fees, failure burn, adverse price/latency/no-fill.
+- G7 portfolio: RiskEngine authorization, exposure/drawdown, duplicates, cooldown and kill switch.
 
-Historical baseline: harness 119/119 was reported after the flock regression tests; Rust 312/312 ×2 is from an earlier recorded state. **Rerun suites at current HEAD; neither count is assumed current.** Environment: rustc 1.99.1, `CARGO_BUILD_JOBS=2` (RAM-constrained), `rtk` prefix where available.
+Ingestion, H8 datasets, model proposals, upstream code, portfolio intents, paper orders and dashboard receipts EACH has typed admission. `ALLOW_PAPER | WATCH | BLOCK` plus reason codes/policy hash, fail closed on missing mandatory facts. No AI or external risk score can override a critical block. Existing paper position risk-reducing exits have separate controlled treatment.
 
-Operator status (GOALS.md §8): prior endpoint validation is evidenced, but current-session availability/authorization is UNKNOWN until env-only preflight; never show the `SNF_MAINNET_RPC_URL` value; Harness² model-backed worker NOT provisioned; Devnet pilot code present but NOT executed; LICENSE undecided.
+## 5. 24/7 deterministic service
 
----
+Service lifecycle: BOOT → CATCHUP → OBSERVE → PAPER_READY → DEGRADED_NO_NEW_ENTRY → RECONCILE → STOP. Continuous Rust-only ingestion, pure filtering, paper broker, WAL/journal, bounded retry, cross-provider dedup, checkpoint, high-water mark, recoverable gap ledger and health/alerting. No AI model or Harness² dependency in a trading loop. A daemon running 24/7 is NOT the same as an agent running unbounded iterations. Validate failover and 24h stress BEFORE claiming continuous operation. Dashboard remains read-only; do not add trading buttons or signer endpoints.
 
-## 3. The operating loop — one bounded iteration per session
+## 6. Harness² and reinforcement-learning research boundaries
 
-Every session, without exception, runs this loop once. Never skip a phase; never compress; never run two cycles in one session.
+Use genuine pinned `google-research/harness2` via existing `integrations/harness2`; deterministic channel already exists. Model-backed jobs remain BLOCKED pending operator-provisioned isolated no-wallet/no-credentials worker, env scrub, network policy, time/token budget and benchmark attestation. Harness² improves proposals/tests/skills, not money-moving runtime code.
 
-```
- L0 ORIENT ─▶ L1 SELECT ─▶ L2 ARCHITECT ─▶ L3 BUILD ─▶ L4 VALIDATE ─▶ L5 EXECUTE ─▶ L6 EVALUATE ─▶ L7 DECIDE+RECORD ─▶ (next session)
-                                                                                                                    │
-              └────────────────────────────────────────────────────────────────────────────────────────────────────┘
-```
+Offline RL/contextual bandit is optional after *causal* and action-labelled cohorts. ABSTAIN is a first-class action. Reward uses independent realized/liquidatable after-cost NAV penalized for tail risk; rejected/timed-out/censored trades remain in denominator. Require behavior policy/OPE uncertainty and support checks; if unknown, block promotion. NEVER self-edit or hot-reload production strategy params based on one “winner”; freeze/version config and human approval.
 
-| Phase | What you do | Exit criterion |
-|---|---|---|
-| **L0 ORIENT** | Run the read order (§1); `python3 harness/agentctl.py doctor`; check `docs/GOALS.md` checkboxes against the owning systems (registry verdicts, gate receipts, merged evidence) — never against memory or chat. | You can state, with file+SHA evidence, what is done, what is blocked, and why. |
-| **L1 SELECT** | Choose exactly ONE bounded work package — the highest-priority UNBLOCKED item in the priority order D → M → S → H (§4–§7). State the selection and its acceptance criteria before starting. | One package, one falsifiable "done", explicit budget (time/requests/trials). |
-| **L2 ARCHITECT** | Write the short design: files touched, data flow, invariants preserved, test plan, rollback. For strategy work this is the preregistration draft. For code: which crates/harness scripts, which failing tests you will write first. | A design a reviewer could reject. If nothing is rejectable, you haven't designed anything. |
-| **L3 BUILD** | Code package: red-first regression test, implementation, format and lint. Data-only package: reproducible audit/collection (no fake code or test claims). | New code red→green; data path provenance and bounded output verified. |
-| **L4 VALIDATE** | Engineering gates: unit/integration tests; SVM/replay tests where applicable; fault injection where applicable; benchmark where applicable; the 12 negative controls stay green; `python3 -m unittest discover -s harness/tests`. | All gates pass for real — exit codes captured, never paraphrased. |
-| **L5 EXECUTE** | Run the real thing: G0 capture leg, paper-trade execution, harness run, benchmark. Bounded budgets; checkpointed; COMPLETE-or-BLOCKED, never maybe. | A receipt (write-once, 0444) or an honest BLOCKED. |
-| **L6 EVALUATE** | Strategy package: independent oracle vs **S00**, creator/day-clustered uncertainty, CVaR95, adverse stresses, separate critic. Data/protocol/harness package: audit coverage/correctness/failures and explicitly mark P&L `NOT_APPLICABLE`. | All numbers evidence-labeled; no invented profitability. |
-| **L7 DECIDE+RECORD** | Promote to shadow-candidate / demote to rejected registry / mark BLOCKED — per the owning system, not your judgment. Update `docs/PROJECT_STATUS.md` (+ registry/capability matrix as owned). Conventional local commit — **never push**. | Session record + receipts + commit exist. Then STOP. |
+## 7. Strategy selection and statistical truth
 
----
+S11: under-6h organic quality with features then available, never eventual 6–24h fill; EX staged/volume-death/liquidity-drain/dev-dump/time exits. S12: quality-filtered real graduation; S13: mid-life survivors need multi-day on-chain facts; S14: cost-basis/funding-proven leaders and follower after-cost entry, not naive W01 (rejected). Each family H8-preregistered, one-use holdout, trial cap, proper multiple-testing correction.
 
-## 4. Work-stream D — DATA FIRST (the critical path; everything else is gated on it)
+G-A: at least 30 preregistered trials or 100 paper trades spanning at least 3 complete creator/day-clustered cohorts; H8 max 20 trials *per* bounded run. G-B: positive incremental net edge vs S00 with clustered CI excluding zero. G-C: CVaR95/drawdown bounds. G-D: +100% fees, +2 slots, 50% no-fill. G-E: sealed single-use holdout. G-F: ≥7 consecutive days **forward** read-only shadow. G-G: human paper-only promotion. Synthetic/fork permanently nonpromotable. An honest rejection is a valid research deliverable.
 
-`SOUL.md` §6 gate order: **a real COMPLETE cohort containing actual launches precedes any S11+ registration.** Until that cohort exists, the registry must refuse real-data trials and every number is synthetic.
+## 8. Absolute hard stops
 
-### D0. FIRST NEXT PACKAGE — audit launch-attribution completeness (before D1 and M4)
+`AGENTS.md` §2 outranks all plans. **NO agent-controlled funded mainnet signing, broadcasting, --submit, keys/seeds, credentials change, paid APIs, visibility change, git force, or push**. No token metadata URL fetching, untrusted instructions, unreviewed external code, provider endpoints printed, holdout peeking or model-driven risk bypass. If any non-negotiable cannot be upheld, stop and report BLOCKED. This owner's push permission applies only to publishing the docs in the current conversation, not to any future local agent.
 
-The full G0 window is block-verified, but the failed-instruction diagnostic only searched the legacy `global:create` discriminator. The collector also concatenates `meta.loadedAddresses` without clearly flattening its `writable`/`readonly` arrays. This is an **audit hypothesis**, not yet a proven missed event. Do NOT conclude that launches disappeared until the following checks pass:
+## 9. Handoff format — mandatory, stop afterward
 
-1. Inspect `harness/launch_cohort_capture.py`, `harness/diag_sample_failed_creates.py`, the tests and the exact 2026-11-05 G0 receipt. Pin current official `pump-fun/pump-public-docs` IDL; distinguish instruction vs event discriminators; check `create`, `create_v2`, activation-slot applicability, program IDs, CPI/log attribution and changed layouts.
-2. Resolve versioned transaction account keys as static + ALT-loaded writable + readonly, in canonical index order. Reconstruct successful and failed instruction-attempt counts for ALL applicable creation families, including outer/inner instructions.
-3. Write failing tests first for any confirmed parser/ALT or missing-family defect. Re-evaluate a **bounded** reproducible sample of the completed window, if the local checkpoint and authorized read-only RPC are present; otherwise report `BLOCKED` without fabricating a new observation.
-4. Separate verified block completeness from decoder completeness; preserve the prior immutable receipt, put corrections in a new evidence file, and update living status/index surfaces. This D0 research/audit is ONE bounded session package.
-5. Do not retroactively claim zero attempted `create_v2` unless independently established. If D0 clears, proceed to D1 (hourly cohort); if the primary hypothesis is a venue shift, require measured evidence before an M4 adapter is justified.
-
-### D1. G0 at scale — the decision tree (after D0)
-
-- **D1a — Time-of-day discrimination (cheapest next probe).** Repeat bounded checkpointed captures at launch-active hours — the US-hours hypothesis (roughly 13:00–01:00 UTC) is untested; the zero-create window spanned ~07:00–08:50 UTC. Even ONE window with real creates unblocks the entire frontier.
-- **D1b — Venue widening (launchpad-migration hypothesis).** If complete cross-hour cohorts with verified create-family coverage still show few/zero launches, assess alternative venues with independent evidence. Venue migration is one hypothesis, not proven. This promotes the M4 adapter decision (§5) from parity work to **the** G0 critical path: widen the collector's program set with clean-room decodes of the new launch programs.
-- **D1c — If creates appear:** immediately begin reserve/fee snapshot capture (D2) on the found launches; that cohort is the PR-2 input.
-
-Standing capture rules (from the 2026-11-05 sessions — do not relearn them the hard way):
-
-- Accept only `coverage_state=COMPLETE`; zero-create windows are recorded as market facts, never discarded.
-- `--max-requests` is cumulative across resume legs — a resumed leg must exceed the checkpoint's accumulated count.
-- Use bounded legs (time+request budgets) under the checkpoint flock; `ckpt-*.json` is mutable working state, never evidence.
-- Manifests/receipts are write-once (0444); raw evidence JSONL alongside.
-- The RPC endpoint lives in `SNF_MAINNET_RPC_URL` only. Never print, log, commit, or receipt it. Provider gaps are `BLOCKED_RPC_CAPABILITY`, not green runs.
-
-### D2. Reserve/fee snapshot capability (Engine B prerequisite) — build it NOW
-
-Build and validate the as-of-decision reserve/fee/config snapshot collector **against trading-active tokens immediately** — do not wait for a launch to appear. Engine B refuses unobserved reserves (abstains, never guesses) and never applies retroactive fee tiers. Acceptance: snapshots provenance-checked to block evidence, gap receipts when state is unobserved, and Engine B consuming them end-to-end on a real cohort. This is the PR-2 enabling capability.
-
-### D3. PR-2 — Engine A/B + independent NAV on the identical real cohort
-
-Per `docs/NEXT_GOAL_H8_G0.md`: both engines, same fills, independent net-asset-value accounting, differences explained to the lamport. This is the first real-data strategy execution in repo history — treat it accordingly.
-
-### D4. W02 tournament — only after D3
-
-Copyability-ranked follow vs S00/S02/RX on a multi-hour real cohort. W01 naive follow is REJECTED — W02 must be a materially different mechanism (provenance-ranked), or it does not run at all.
-
----
-
-## 5. Work-stream M — expand to M4 (now strategic, not just parity)
-
-M4 scope per `docs/CAPABILITY_MATRIX.md` rows C2–C24 and GOALS.md §7: **Chainstack parity closure, LetsBonk/StonkFun adapter decision, `CONFIG_MIGRATION.md`.**
-
-Priority inside M4 (the zero-create finding reorders it):
-
-1. **M4.1 — LetsBonk / LaunchLab adapter (conditional strategic value).** Verify launch demand and current official program/IDL facts before inferring venue migration. Clean-room discipline: program behavior from official docs + on-chain fixtures only (ADR-0002); never transliterate from upstream sniper repos. Deliverable pattern: decode → differential test (the M0–M3c 320/320 style) → collector program-set extension → a COMPLETE window containing the new program's create events.
-2. **M4.2 — Chainstack parity rows C2–C24.** Audit each row against `docs/CAPABILITY_MATRIX.md`; close or explicitly de-scope with a written rationale per row. Apache-2.0 upstream: read for behavior, reimplement originally, keep attribution in `docs/UPSTREAM_MANIFEST.md`.
-3. **M4.3 — StonkFun adapter decision.** Decide build/no-build with an ADR; a "no" with reasons is a complete answer.
-4. **M4.4 — `CONFIG_MIGRATION.md`.** Configuration truth for the expanded program set; no silent defaults.
-
-M4 exit gate: decode differentials green, the 12 negative controls still green, collector COMPLETE windows over the widened program set, capability matrix rows closed with receipts.
-
----
-
-## 6. Work-stream S — strategy frontier (gated on D; doctrine in SOUL.md §5)
-
-Order of operations once real COMPLETE cohorts with launches exist:
-
-1. **PR-2** (D3) — engines A/B + independent NAV on the identical cohort.
-2. **W02** (D4) — then, and only then, is any holdout opening justified.
-3. **S11 — filtered under-6h entry** (selection family): preregistered quality signals observed *as of decision* (buyer breadth, fill rate so far, bundle clues, historical dev score, independently observed insider concentration). Eventual 6–24h curve-fill and 48h holder retention are FUTURE LABELS at a <6h entry and cannot be features. External thresholds are candidate hypotheses, not validated production parameters.
-4. **S12 — quality-filtered graduation entry** (event family): filter the filter (thin/fake graduations); post-graduation reserve snapshots fed to Engine B; landing cost includes failed-tx burn.
-5. **S13 — mid-life slow mooner** (survivor family): 24h–14d, aliveness PROVEN (diamond-hands >40%, dev-holdings decay, liquidity floor), never assumed.
-6. **S14 — provenance-filtered leader follow**: verified-real leader P&L (Law 4), OOS win-rate persistence before following, early delay arms, follower-cost haircut.
-7. **EX — exit engine (cross-cutting, mandatory companion):** death-signal exits (volume death, one-sided selling, dev dump, liquidity drain, price-collapse confirmation) + staged partial/time exits. **No entry family is complete without it (Law 2).** Evaluate A/B on identical entry fills.
-
-Non-negotiables for every challenger:
-
-- **Preregister before evaluation** via `harness/research_registry.py`: cohort definition, features, parameters, exit policy, kill criteria, trial budget — hash-chained. The holdout opens at most once.
-- **S00 appears in every comparison.** A missing baseline voids the receipt.
-- **Rejected registry is untouchable** without a materially new mechanism: naive block-0/latency entry, naive wallet-follow at any delay, unfiltered migration snipe, leaderboard copying without provenance.
-- Exploratory work is permitted and must be labeled exploratory — it is never promotable.
-- Verdict authority: `docs/STRATEGY_REGISTRY.md` and the H8 ledger, never chat memory.
-
----
-
-## 7. Work-stream H — harness & validation (always-on; underpins every other stream)
-
-- **Tests are the harness's spine:** harness suite (117 at last count — grow it, never shrink); every production defect gets its regression test FIRST (`268654f` budget-stop, `b90d7e5` flock are the pattern).
-- **The 12 negative controls stay green** — a strategy that passes by breaking a control has not passed.
-- **Harness²:** deterministic channel only (ADR-0012). Model-backed remains BLOCKED behind the isolated worker (`integrations/harness2/worker/OPERATOR_CHECKLIST.md`) — never simulate or fake it.
-- **`snf-harness` surface:** doctor / verify / replay / fork / shadow / evaluate / compare / promote — validate against it, don't bypass it.
-- **Shadow prep (G-F):** ≥7-day prospective read-only shadow cannot be replayed, only lived. When a challenger reaches G-F candidacy, set it up to run forward with daily immutable health receipts — and start the clock only when it's genuinely prospective.
-- **Fault injection + benchmarks** wherever execution, locking, or checkpointing changes.
-
----
-
-## 8. Validation matrix — what "validated" means here
-
-**Engineering validation (every code change, AGENTS.md §4 order):**
-
-```
-DISCOVER → SPECIFY ACCEPTANCE → WRITE FAILING TEST → IMPLEMENT → cargo fmt →
-cargo clippy --all-targets --all-features -- -D warnings → unit/integration tests →
-SVM/replay tests (where applicable) → fault injection (where applicable) →
-benchmark (where applicable) → REVIEW (diff, secrets, licenses) →
-EVIDENCE (docs/evidence/{ID}.md) → UPDATE PROJECT_STATUS + capability matrix → local commit
+```text
+SESSION HANDOFF — YYYY-MM-DD — HEAD <sha>
+Package / goal: <ID, why selected>
+Implementation: <files and actual changes>
+Receipt: <paths/hash/evidence classes>
+Tests: <commands and real pass/fail/skip>
+Research data: <coverage, exclusions, known_at> 
+Economics: <real historical paper net vs S00, or NOT_APPLICABLE>
+Security: <negative controls and residual threats>
+Not claimed: <anything not validated, especially real trading/forward shadow/profit>
+Next: <one unblocked package and acceptance>
+Local commits: <sha(s)>; pushed: NO
+Operator escalations: <required approvals, or none>
 ```
 
-A failing gate blocks the package: root-cause, fix, re-run. Never mark an unexecuted test passed; never edit fixtures green without documented protocol-source justification.
-
-**Research validation (every challenger, SOUL.md §7 — in order, never compressed or simulated):**
-
-| Gate | Requirement |
-|---|---|
-| G-A Sample | ≥30 preregistered trials (or ≥100 paper trades) across ≥3 creator/day-clustered COMPLETE cohorts; H8's 20-trial cap applies per bounded experiment/run, with all runs counted |
-| G-B Effect | `incremental_net_edge > 0` vs S00; clustered bootstrap CI excluding zero |
-| G-C Risk | CVaR95 + max drawdown inside pre-declared bounds; no outlier carrying the result |
-| G-D Stress | Survives +100% fees, +2-slot latency, 50% no-fill without sign flip |
-| G-E Holdout | Sealed one-use holdout confirms direction |
-| G-F Shadow | ≥7 consecutive days prospective read-only shadow, daily immutable receipts |
-| G-G Human | PF7 owner review; paper-only promotion at first |
-
-**Evidence discipline:** every number carries its evidence class (`SYNTHETIC | FORK_MECHANICS | SHADOW_ESTIMATE | LIVE_CONFIRMED`; capture receipts: `MAINNET_READ_ONLY_CAPTURE` / `MAINNET_READ_ONLY_OBSERVED` / `VERIFIED_CODE`). External market facts are context for hypothesis design, never proof for promotion. Synthetic outputs are permanently `promotable=false`.
-
----
-
-## 9. Session protocol (how a loop iteration closes)
-
-1. One bounded cycle (§3). If you finish early, stop — do not start a second package.
-2. Receipts are write-once (0444) under `harness/runs/` and `docs/evidence/`; corrections happen in NEW files, never edits.
-3. Session record appended to `docs/PROJECT_STATUS.md`: scope / what completed (labeled) / what is NOT claimed / engineering notes / next. Mirror the honesty of the 2026-11-05 G0 reports — the "What is NOT claimed" section is mandatory.
-4. Conventional local commit(s); **never push** (`AGENTS.md` §4). Publishing the two mission files was a separate explicit owner action; it does not authorize future pushes by the development agent.
-5. Docs discipline: one job per doc; new operational rules land as sections in AGENTS.md (dated facts go to PROJECT_STATUS); strategy content to SOUL.md §5 (owner-visible amendments only); never let AGENTS.md regress into a log.
-
----
-
-## 10. Hard stops — non-negotiables (violate none, ever)
-
-1. **Mainnet is read-only.** No funded keys, no broadcasting, no agent-controlled signing, no `--submit`, no paid infra, no push, no force-anything without explicit recorded owner authorization.
-2. Live trading requires four independent gates (cargo `live` feature ∧ operator authorization token ∧ validated budget config ∧ kill-switch check) **plus a separate human-signed owner decision**. No agent can authorize it. Paper-only promotion comes first.
-3. **Secrets never enter prompts, logs, errors, commits, fixtures, receipts, or history.** The RPC URL stays in `SNF_MAINNET_RPC_URL`; wallet key material is never read or shown.
-4. Observer/replay/paper runtimes stay structurally incapable of broadcasting (compile-time capability types).
-5. S00 in every comparison; the 12 negative controls green; synthetic permanently non-promotable; no silent synthetic fallback into mainnet claims.
-6. Incomplete data is BLOCKED, not priced; coverage states derive from block evidence, never optimism.
-7. An honest `BLOCKED` beats a fabricated green. Never invent numbers, dates, commands, or exit codes.
-8. Clean-room licensing (ADR-0002); upstream repos under `upstream/` are read-only and never built or run.
-9. Never push, never change repository visibility, never rotate/modify credentials.
-
----
-
-## 11. Escalate to the operator (agents cannot do these)
-
-- Provider swap or RPC endpoint change (capability probe + `docs/RPC_PROVIDERS.md` update first).
-- Provisioning the isolated Harness² worker (unblocks model-backed harness).
-- Authorizing/executing the Devnet pilot (H5-A preflight → H5-B bounded buy→sell).
-- The repository LICENSE decision.
-- Anything requiring funded keys — which is to say: everything funded, forever.
-- Any gate you cannot pass honestly — report BLOCKED with the exact blocker rather than improvising.
-
----
-
-## 12. Loop continuation — repeat only when the operator starts a new session
-
-Each operator-invoked session: select the highest-priority UNBLOCKED package in order **D → M → S → H** (§4–§7), run L0–L7 (§3) exactly once, record (§9), then STOP. Do not spawn another session, automation, cron job or unbounded loop. If a stream is fully blocked, drop to the next; if all four are blocked simultaneously (rare — H is almost always open), produce a blocked-report against §11 and stop.
-
-The mission succeeds the day a challenger passes G-A…G-G and a human decides what to do with it. Until then — and after — **the loop is the product**: measure, preregister, evaluate, record, expand the machinery, repeat.
-
-```
-We measure. We do not guess.
-Selection over speed. Exits over entries.
-Every lamport counted. Every trial preregistered.
-Provenance before belief. S00 is the bar.
-Paper is the proving ground; receipts are the product.
-An honest zero beats a flattering maybe.
-The goal is to win — and winning is proven, not claimed.
-```
-
----
-
-## Appendix A — command cheat-sheet (verify flags at HEAD before use; code is truth)
-
-```bash
-# Orientation
-git rev-parse HEAD
-python3 harness/agentctl.py doctor && python3 harness/agentctl.py skills && python3 harness/agentctl.py commands
-
-# Provider capability (read-only, 3 calls)
-python3 harness/rpc_capability_probe.py --out harness/runs/rpc-sample-<ts>.json
-
-# G0 capture (read-only mainnet; COMPLETE or BLOCKED; checkpointed legs)
-python3 harness/launch_cohort_capture.py --recent-slots <N> --max-requests <M>   # remember: cumulative across legs
-
-# Preregistration (hash-chained, BEFORE evaluation)
-python3 harness/research_registry.py --help
-
-# Synthetic-only research (permanently promotable=false; confirm required CLI flags)
-python3 harness/research_cycle.py --help
-python3 harness/research_batch.py --help
-
-# Wallet alpha / devnet-read-only probes
-python3 harness/wallet_alpha_lab.py && python3 harness/wallet_watch.py && python3 harness/cluster_probe.py
-
-# Harness surface
-python3 harness/snf-harness --help
-
-# Engineering gates
-cargo fmt && cargo clippy --all-targets --all-features -- -D warnings && cargo test
-python3 -m unittest discover -s harness/tests
-python3 harness/agentctl.py lint-skills && bash -n harness/scripts/*.sh
-```
-
-## Appendix B — session record template (append to `docs/PROJECT_STATUS.md`)
-
-```markdown
-## <YYYY-MM-DD> — <work package ID> — <one-line outcome>
-- Scope: <what this session attempted; the L1 selection>
-- Completed (labeled): <facts with evidence classes and receipt paths>
-- Engineering notes: <defects found/fixed, regression tests, perf facts>
-- What is NOT claimed: <mandatory honesty section>
-- Next: <the next package in D→M→S→H order, or the BLOCKED report>
-```
+Start L0 now; execute one fully bounded work package to a validated end, or deliver evidence-backed BLOCKED; do not stop at planning.
